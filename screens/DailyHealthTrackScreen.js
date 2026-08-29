@@ -1,4 +1,4 @@
-import { StyleSheet, View, FlatList, ScrollView  } from 'react-native'
+import { StyleSheet, View, FlatList, ScrollView,TextInput  } from 'react-native'
 import {Text, Button, Card, LeftContent, Divider, Icon }from 'react-native-paper'
 import React from 'react'
 
@@ -22,7 +22,21 @@ const DailyHealthTrackScreen = () => {
                           {icon: 'cup-water', color: 'deepskyblue'},
                           {icon: 'cup-water', color: 'silver'},
                           {icon: 'cup-water', color: 'silver'}
+                          
     ]
+    const styles = StyleSheet.create({
+      notesHeader: {
+          flexDirection: 'row',
+          justifyContent: 'space-between',
+          alignItems: 'center',},
+      notesTitle: {
+          fontWeight: '700',
+          color: 'black',},
+      notesInput: {
+          backgroundColor: 'white',
+          borderRadius: 12,
+          minHeight: 60,},
+  });
     const renderVitalsItem = ({item}) => (
         <View style={{marginVertical: '3'}}>
         <View style={{flexDirection:'row', justifyContent: 'space-between', marginVertical: 3
@@ -205,7 +219,29 @@ const DailyHealthTrackScreen = () => {
 
     </Card.Content>
   </Card>
-  
+
+  <Card  style = {{marginBottom: 13}}>
+    <Card.Content>
+        <View style={styles.notesHeader}>
+            <Text variant="titleMedium" style={styles.notesTitle}>
+                Notes
+            </Text>
+
+        </View>
+
+        <TextInput
+            mode="flat"
+            placeholder="Add any symptoms or notes"
+            multiline
+            numberOfLines={3}
+            style={styles.notesInput}
+            underlineColor="transparent"
+            activeUnderlineColor="transparent"
+        />
+    </Card.Content>
+</Card>
+
+<Button  mode="contained" buttonColor='purple'> Save </Button>
  
     </ScrollView>
   )
