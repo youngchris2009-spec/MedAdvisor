@@ -9,6 +9,9 @@ const PrescriptionScanScreen = () => {
   const [permission, requestPermission] = useCameraPermissions()
   const [scanType, setScanType] = useState('prescription')
   const [photo, setPhoto] = useState(null)
+    const [photoBase64, setPhotoBase64] = useState(null)
+  const [loading, setLoading] = useState(false)
+  const [result, setResult] = useState(null)
 
   // Wait while checking camera permission
   if (!permission) {
@@ -45,25 +48,26 @@ const PrescriptionScanScreen = () => {
 
   // Take photo
   const takePhoto = async () => {
-    try {
-      if (!cameraRef.current) {
-        return
-      }
-
-      const picture = await cameraRef.current.takePictureAsync({
-        quality: 0.8,
-      })
-
-      setPhoto(picture.uri)
-    } catch (error) {
-      console.log(error)
-
-      Alert.alert(
-        'Camera Error',
-        'Unable to take photo.'
-      )
+  try {
+    if (!cameraRef.current) {
+      return
     }
+
+    const picture = await cameraRef.current.takePictureAsync({
+      quality: 0.8,
+      base64: true,
+    })
+
+    console.log('Picture URI:', picture.uri)
+    console.log('Base64 exists:', !!picture.base64)
+    console.log('Base64 length:', picture.base64?.length)
+
+    setPhoto(picture.uri)
+    setPhotoBase64(picture.base64)
+  } catch (error) {
+    console.log(error)
   }
+}
 
   // Retake photo
   const retakePhoto = () => {
@@ -71,15 +75,69 @@ const PrescriptionScanScreen = () => {
   }
 
   // For now just test the captured image
-  const usePhoto = () => {
-    console.log('Photo:', photo)
-    console.log('Scan Type:', scanType)
+  const usePhoto = async () => {
+  try {
+        console.log('API KEY EXISTS:', !!process.env.EXPO_PUBLIC_OPENAI_API_KEY)
+    console.log('PHOTO URI:', photo)
+    console.log('BASE64 EXISTS:', !!photoBase64)
+    console.log('BASE64 LENGTH:', photoBase64?.length)
+    setLoading(true)
+
+const response = await fetch(
+  'https://api.openai.com/v1/responses',
+  {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      Authorization:
+        `Bearer ${process.env.EXPO_PUBLIC_OPENAI_API_KEY}`,
+    },
+    body: JSON.stringify({
+      model: 'gpt-5.6',
+      input: [
+        {
+          role: 'user',
+          content: [
+            {
+              type: 'input_text',
+              text: `
+Analyze this medication image.
+
+Return the medication name, dosage,
+frequency, and instructions.
+              `,
+            },
+            {
+              type: 'input_image',
+              image_url:
+                `data:image/jpeg;base64,${photoBase64}`,
+            },
+          ],
+        },
+      ],
+    }),
+  }
+)
+
+console.log('STATUS:', response.status)
+
+const data = await response.json()
+
+console.log('OPENAI FULL RESPONSE:')
+console.log(JSON.stringify(data, null, 2))
+
+    console.log(response.output_text)
+  } catch (error) {
+    console.log(error)
 
     Alert.alert(
-      'Photo Ready',
-      'The next step will send this image to AI for analysis.'
+      'Error',
+      'Unable to analyze medication.'
     )
+  } finally {
+    setLoading(false)
   }
+}
 
   // PHOTO PREVIEW
   if (photo) {
