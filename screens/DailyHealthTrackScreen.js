@@ -1,29 +1,33 @@
-import { StyleSheet, View, FlatList, ScrollView,TextInput  } from 'react-native'
+import { StyleSheet, View, FlatList, ScrollView,TextInput,Pressable  } from 'react-native'
 import {Text, Button, Card, LeftContent, Divider, Icon }from 'react-native-paper'
-import React from 'react'
+import React, { useState } from 'react'
 
 const DailyHealthTrackScreen = () => {
-    const vitals = [{name: 'Weight: ', vitals: '157 lbs', icon: 'scale-bathroom', color: 'navy'},
-                    {name: 'Blood Pressure: ', vitals:'120/80 mmHg', icon: 'gauge', color: 'orange'},
-                    {name: 'Blood Sugar: ', vitals:'98 mg/dL', icon: 'water', color: 'red'},
-                    {name: 'Heart Rate: ', vitals:'72 bpm', icon: 'heart', color: 'red'}
+
+    const [weight, setWeight] = useState('157');
+    const [bloodPressure, setBloodPressure] = useState('120/80');
+    const [bloodSugar, setBloodSugar] = useState('98');
+    const [heartRate, setHeartRate] = useState('72');
+
+    const [exercise, setExercise] = useState('32');
+    const [sleep, setSleep] = useState('7');
+    const [waterIntake, setWaterIntake] = useState([true, true, true, true, true, true, false, false]);
+    const [selectedMood, setSelectedMood] = useState(4);
+
+    const vitals = [{name: 'Weight: ', vitals: weight, unit: 'lbs', icon: 'scale-bathroom', color: 'navy', setValue: setWeight},
+                    {name: 'Blood Pressure: ', vitals:bloodPressure, unit: 'mmHg', icon: 'gauge', color: 'orange', setValue: setBloodPressure},
+                    {name: 'Blood Sugar: ', vitals:bloodSugar, unit:' mg/dL', icon: 'water', color: 'red', setValue: setBloodSugar},
+                    {name: 'Heart Rate: ', vitals:heartRate, unit:'bpm', icon: 'heart', color: 'red', setValue: setHeartRate}
     ]
-    const mood = [{icon: 'emoticon-frown', color: 'red'},
-                  {icon: 'emoticon-sad', color: 'orange'},
-                  {icon: 'emoticon-neutral', color: 'gold'},
-                  {icon: 'emoticon-happy', color: 'yellowgreen'},
-                  {icon: 'emoticon', color: 'limegreen'}               
+    const mood = [{icon: 'emoticon-frown', color: 'red', label: 'Very Bad'},
+                  {icon: 'emoticon-sad', color: 'orange', lable: 'Bad'},
+                  {icon: 'emoticon-neutral', color: 'gold', label: 'Okay'},
+                  {icon: 'emoticon-happy', color: 'yellowgreen', label:'Good'},
+                  {icon: 'emoticon', color: 'limegreen', label:'Great'}               
     ]
-    const waterIntake =  [{icon: 'cup-water', color: 'deepskyblue'},
-                          {icon: 'cup-water', color: 'deepskyblue'},
-                          {icon: 'cup-water', color: 'deepskyblue'},
-                          {icon: 'cup-water', color: 'deepskyblue'},
-                          {icon: 'cup-water', color: 'deepskyblue'},
-                          {icon: 'cup-water', color: 'deepskyblue'},
-                          {icon: 'cup-water', color: 'silver'},
-                          {icon: 'cup-water', color: 'silver'}
+    const waterCups = Array.from({ length: 8 });
                           
-    ]
+    
     const styles = StyleSheet.create({
       notesHeader: {
           flexDirection: 'row',
@@ -45,7 +49,22 @@ const DailyHealthTrackScreen = () => {
                 <Icon source={item.icon} color = {item.color} size = {25} />
                 <Text>{item.name}</Text>
             </View>
-            <Text>{item.vitals}</Text>
+            <TextInput
+              value={item.vitals}
+              onChangeText={item.setValue}
+              keyboardType={
+                  item.name === 'Blood Pressure: '
+                      ? 'numbers-and-punctuation'
+                      : 'numeric'
+              }
+              style={{
+                  width: 100,
+                  textAlign: 'right'
+              }}
+          />
+              <View>
+              <Text> {item.unit}</Text> 
+              </View>
             </View>
             <Divider
             style={{
@@ -68,18 +87,24 @@ const DailyHealthTrackScreen = () => {
           </View>
       </View>
    )
-   const renderWaterIntakeItem = ({item}) => (
-    <View style={{marginVertical: '3'}}>
-    <View style={{flexDirection:'row', justifyContent: 'center',marginVertical: 3
-    }}>
-        <View style={{flexDirection:'row', gap:16, alignItems:'center'}}>
-            <Icon source={item.icon} color = {item.color} size = {40} />
-            <Text>{item.name}</Text>
-        </View>
-        <Text>{item.vitals}</Text>
-        </View>
-    </View>
- )
+   const renderWaterIntakeItem = ({index}) => (
+    <Pressable
+        onPress={() => {
+            setWaterIntake(prev => {
+                const newWater = [...prev];
+                newWater[index] = !newWater[index];
+                return newWater;
+            });
+        }}
+        style={{ marginHorizontal: 5 }}
+    >
+        <Icon
+            source="cup-water"
+            color={waterIntake[index] ? 'deepskyblue' : 'silver'}
+            size={40}
+        />
+    </Pressable>
+)
   return (
     <ScrollView style = {{margin:15}}>
     
@@ -96,22 +121,25 @@ const DailyHealthTrackScreen = () => {
     </Card.Content>
   </Card>
 
-  <Card style = {{marginBottom: 13}}>
-    
+  <Card style={{marginBottom: 13}}>
     <Card.Title
-      title="Water Intake"
-      left={LeftContent}
+        title="Water Intake"
+        left={LeftContent}
     />
-      <Card.Content>
-     
-      <FlatList 
-        horizontal
-        contentContainerStyle = {{justifyContent:'space-evenly', flexGrow: 1}}
-        data = {waterIntake}  
-        renderItem = {renderWaterIntakeItem} 
-      />
+
+    <Card.Content>
+        <FlatList
+            horizontal
+            contentContainerStyle={{
+                justifyContent: 'space-evenly',
+                flexGrow: 1
+            }}
+            data={waterCups}
+            renderItem={renderWaterIntakeItem}
+            
+        />
     </Card.Content>
-  </Card>
+</Card>
 
 <View style={{flexDirection:'row', flex: 1, justifyContent:'space-between' }}>
 
