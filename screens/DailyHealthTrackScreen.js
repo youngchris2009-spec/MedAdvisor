@@ -1,6 +1,7 @@
 import { StyleSheet, View, FlatList, ScrollView,TextInput,Pressable  } from 'react-native'
 import {Text, Button, Card, LeftContent, Divider, Icon }from 'react-native-paper'
 import React, { useState } from 'react'
+import { experimentalSetDeliveryMetricsExportedToBigQueryEnabled } from 'firebase/messaging/sw';
 
 const DailyHealthTrackScreen = () => {
 
@@ -13,6 +14,7 @@ const DailyHealthTrackScreen = () => {
     const [sleep, setSleep] = useState('7');
     const [waterIntake, setWaterIntake] = useState([true, true, true, true, true, true, false, false]);
     const [selectedMood, setSelectedMood] = useState(4);
+    const [notes, setNotes] = useState('');
 
     const vitals = [{name: 'Weight: ', vitals: weight, unit: 'lbs', icon: 'scale-bathroom', color: 'navy', setValue: setWeight},
                     {name: 'Blood Pressure: ', vitals:bloodPressure, unit: 'mmHg', icon: 'gauge', color: 'orange', setValue: setBloodPressure},
@@ -20,7 +22,7 @@ const DailyHealthTrackScreen = () => {
                     {name: 'Heart Rate: ', vitals:heartRate, unit:'bpm', icon: 'heart', color: 'red', setValue: setHeartRate}
     ]
     const mood = [{icon: 'emoticon-frown', color: 'red', label: 'Very Bad'},
-                  {icon: 'emoticon-sad', color: 'orange', lable: 'Bad'},
+                  {icon: 'emoticon-sad', color: 'orange', label: 'Bad'},
                   {icon: 'emoticon-neutral', color: 'gold', label: 'Okay'},
                   {icon: 'emoticon-happy', color: 'yellowgreen', label:'Good'},
                   {icon: 'emoticon', color: 'limegreen', label:'Great'}               
@@ -75,18 +77,39 @@ const DailyHealthTrackScreen = () => {
             />
         </View>
      )
-     const renderMoodItem = ({item}) => (
-      <View style={{marginVertical: '3'}}>
-      <View style={{flexDirection:'row',  alignItems:'center', justifyContent: 'center', marginVertical: 3
+     const renderMoodItem = ({item, index}) => (
+      <View style={{
+          alignItems: 'center',
+          flex: 1
       }}>
-          <View style={{flexDirection:'row', gap:16, alignItems:'center'}}>
-              <Icon source={item.icon} color = {item.color} size = {40} />
-              <Text>{item.name}</Text>
-          </View>
-          <Text>{item.vitals}</Text>
-          </View>
+          <Pressable
+              onPress={() => setSelectedMood(index)}
+              style={{width: 52, height: 52, borderRadius: 26, alignItems: 'center',
+                  justifyContent: 'center', borderWidth: selectedMood === index ? 2 : 0, 
+                  borderColor: 'black'}}>
+              <View style={{width: 46, height: 46, borderRadius: 23, alignItems: 'center', 
+                justifyContent: 'center'}}>
+                  <Icon
+                      source={item.icon}
+                      color={item.color}
+                      size={23}
+                  />
+              </View>
+          </Pressable>
+  
+          {selectedMood === index && (
+              <Text style={{
+                  color: 'black',
+                  fontSize: 11,
+                  marginTop: 4,
+                  fontWeight: '500'
+              }}>
+                  {item.label}
+              </Text>
+          )}
       </View>
-   )
+  )
+
    const renderWaterIntakeItem = ({index}) => (
     <Pressable
         onPress={() => {
@@ -144,128 +167,192 @@ const DailyHealthTrackScreen = () => {
 <View style={{flexDirection:'row', flex: 1, justifyContent:'space-between' }}>
 
 
-  <Card style = {{marginBottom: 13, flex:1, marginRight:9}}>
-    <Card.Title
-      title="Mood"
-      left={LeftContent}
-    />
-      <Card.Content>
-      <FlatList 
-        horizontal
-        contentContainerStyle = {{justifyContent:'space-evenly', flexGrow: 1}}
-        data = {mood}  
-        renderItem = {renderMoodItem} 
-      />
+<Card style={{
+    marginBottom: 13,
+    flex: 1,
+    marginRight: 9
+}}>
+    <View style={{
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        alignItems: 'center'
+    }}>
+        <Card.Title
+          title="Mood"
+          left={LeftContent}
+        />
+        </View>
+
+    <Text style={{
+        fontSize: 14,
+        color: '#64748B',
+        marginLeft: 16,
+        marginTop: 4
+    }}>
+        How are you feeling?
+    </Text>
+
+    <Card.Content style={{
+        marginTop: 15,
+        paddingHorizontal: 5
+    }}>
+        <FlatList
+            horizontal
+            data={mood}
+            renderItem={renderMoodItem}
+            keyExtractor={(_, index) => index.toString()}
+            contentContainerStyle={{
+                flexGrow: 1,
+                justifyContent: 'space-evenly'
+            }}
+            showsHorizontalScrollIndicator={false}
+        />
     </Card.Content>
-  </Card>
+</Card>
   
   <Card style = {{marginBottom: 13, flex:1}}>
     <View style={{flexDirection:'row', alignItems:'center', justifyContent:'space-between'}}>
     <Card.Title
-      title="Excercise"
+      title="Exercise"
       left={LeftContent}
     />
 
     <Text style ={{marginRight: 20}} >
-    32 of 45 min
+    {exercise} of 45 min
     </Text>
 
     </View>
 
       <Card.Content>
-      <FlatList 
-        horizontal
-        contentContainerStyle = {{justifyContent:'space-evenly', flexGrow: 1}}
-        />
-
-        <Icon
-          source="run"
-          color="limegreen"
-          size={35}
-        />
-
-        <Text style={{
-          fontSize: 20, fontWeight: 'bold'}} > 32 min
-          </Text> 
-
-  
-
-        <View style={{
-          height: 6,
-          backgroundColor: 'lightgray',
-          borderRadius: 5,
-          marginTop: 10,
-          marginBottom: 5
+      <View style={{
+            flexDirection: 'row',
+            alignItems: 'center',
+            gap: 10
         }}>
+            <Icon
+                source="run"
+                color="limegreen"
+                size={35}
+            />
+
+            <TextInput
+                value={exercise}
+                onChangeText={setExercise}
+                keyboardType="numeric"
+                style={{
+                    fontSize: 20,
+                    fontWeight: 'bold',
+                    width: 60,
+                    padding: 0
+                }}
+            />
+
+            <Text style={{
+                fontSize: 16
+            }}>
+                min
+            </Text>
+        </View>
 
         <View style={{
-          height: 6,
-          width: '71%',
-          backgroundColor: 'palegreen',
-          borderRadius: 5
-        }} />
-      </View> 
+            height: 6,
+            backgroundColor: 'lightgray',
+            borderRadius: 5,
+            marginTop: 10,
+            marginBottom: 5
+        }}>
+            <View style={{
+                height: 6,
+                width: `${Math.min((Number(exercise) / 45) * 100, 100)}%`,
+                backgroundColor: 'limegreen',
+                borderRadius: 5
+            }} />
+        </View> 
     </Card.Content>
   </Card>
 
   </View>
 
-  <Card style = {{marginBottom: 13}}>
-  <View style={{flexDirection:'row', alignItems:'center', justifyContent:'space-between'}}>
-    <Card.Title
-      title="Sleep"
-      left={LeftContent}
-    />
-    <Text style ={{marginRight: 20}} >
-    7 of 8 hours
-    </Text>
-    </View>
-      <Card.Content>
-      <Icon
-          source="sleep"
-          color="purple"
-          size={35}
+  <Card style={{ marginBottom: 13 }}>
+    <View style={{
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'space-between'
+    }}>
+        <Card.Title
+            title="Sleep"
+            left={LeftContent}
         />
-        <Text style={{
-          fontSize: 20, fontWeight: 'bold'}} > 7 hours
-          </Text> 
-      <View style={{
-          height: 6,
-          backgroundColor: 'lightgray',
-          borderRadius: 5,
-          marginTop: 10,
-          marginBottom: 5
-        }}>
+
+        <Text style={{ marginRight: 20 }}>
+            {sleep} of 8 hours
+        </Text>
+    </View>
+
+    <Card.Content>
 
         <View style={{
-          height: 6,
-          width: '71%',
-          backgroundColor: 'purple',
-          borderRadius: 5
-        }} />
+            flexDirection: 'row',
+            alignItems: 'center',
+            gap: 10
+        }}>
+            <Icon
+                source="sleep"
+                color="purple"
+                size={35}
+            />
+
+            <TextInput
+                value={sleep}
+                onChangeText={setSleep}
+                keyboardType="numeric"
+                style={{
+                    fontSize: 20,
+                    fontWeight: 'bold',
+                    width: 60,
+                    padding: 0
+                }}
+            />
+
+            <Text style={{
+                fontSize: 16
+            }}>
+                hours
+            </Text>
+        </View>
+
+        <View style={{
+            height: 6,
+            backgroundColor: 'lightgray',
+            borderRadius: 5,
+            marginTop: 10,
+            marginBottom: 5,
+        }}>
+            <View style={{
+                height: 6,
+                width: `${Math.min((Number(sleep) / 8) * 100, 100)}%`,
+                backgroundColor: 'purple',
+                borderRadius: 5
+            }} />
         </View>
 
     </Card.Content>
-  </Card>
+</Card>
 
   <Card  style = {{marginBottom: 13}}>
     <Card.Content>
         <View style={styles.notesHeader}>
-            <Text variant="titleMedium" style={styles.notesTitle}>
-                Notes
-            </Text>
+        <Card.Title
+            title="Notes"
+            left={LeftContent}
+        />
+
 
         </View>
 
-        <TextInput
-            mode="flat"
-            placeholder="Add any symptoms or notes"
-            multiline
-            numberOfLines={3}
-            style={styles.notesInput}
-            underlineColor="transparent"
-            activeUnderlineColor="transparent"
-        />
+        <TextInput mode="flat" placeholder="Add any symptoms or notes" 
+        multiline numberOfLines={3} style={styles.notesInput} underlineColor="transparent" 
+        activeUnderlineColor="transparent" />
     </Card.Content>
 </Card>
 
