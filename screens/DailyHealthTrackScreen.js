@@ -2,16 +2,18 @@ import { StyleSheet, View, FlatList, ScrollView,TextInput,Pressable  } from 'rea
 import {Text, Button, Card, LeftContent, Divider, Icon }from 'react-native-paper'
 import React, { useState } from 'react'
 import { experimentalSetDeliveryMetricsExportedToBigQueryEnabled } from 'firebase/messaging/sw';
+import { doc, setDoc } from 'firebase/firestore';
+import { db } from '../firebase';
 
 const DailyHealthTrackScreen = () => {
 
-    const [weight, setWeight] = useState('157');
-    const [bloodPressure, setBloodPressure] = useState('120/80');
-    const [bloodSugar, setBloodSugar] = useState('98');
-    const [heartRate, setHeartRate] = useState('72');
+    const [weight, setWeight] = useState('');
+    const [bloodPressure, setBloodPressure] = useState('');
+    const [bloodSugar, setBloodSugar] = useState('');
+    const [heartRate, setHeartRate] = useState('');
 
-    const [exercise, setExercise] = useState('32');
-    const [sleep, setSleep] = useState('7');
+    const [exercise, setExercise] = useState('');
+    const [sleep, setSleep] = useState('');
     const [waterIntake, setWaterIntake] = useState([true, true, true, true, true, true, false, false]);
     const [selectedMood, setSelectedMood] = useState(4);
     const [notes, setNotes] = useState('');
@@ -28,21 +30,109 @@ const DailyHealthTrackScreen = () => {
                   {icon: 'emoticon', color: 'limegreen', label:'Great'}               
     ]
     const waterCups = Array.from({ length: 8 });
-                          
+    const save = async () => {
+        try {
+            const userID = '123'; // Replace this with the actual logged-in user's ID
+            const dateTime = new Date().toISOString();
     
-    const styles = StyleSheet.create({
-      notesHeader: {
-          flexDirection: 'row',
-          justifyContent: 'space-between',
-          alignItems: 'center',},
-      notesTitle: {
-          fontWeight: '700',
-          color: 'black',},
-      notesInput: {
-          backgroundColor: 'white',
-          borderRadius: 12,
-          minHeight: 60,},
-  });
+            // =========================
+            // DAILY HEALTH TRACKING
+            // VITALS
+            // =========================
+    
+            const healthTracking = [
+                {
+                    name: 'Weight',
+                    vitals: weight,
+                    icon: 'scale-bathroom'
+                },
+                {
+                    name: 'Blood Pressure',
+                    vitals: bloodPressure,
+                    icon: 'gauge'
+                },
+                {
+                    name: 'Blood Sugar',
+                    vitals: bloodSugar,
+                    icon: 'water'
+                },
+                {
+                    name: 'Heart Rate',
+                    vitals: heartRate,
+                    icon: 'heart'
+                },
+                {
+                    name: 'Mood',
+                    vitals: selectedMood,
+                    icon: mood[selectedMood].icon
+                }
+            ];
+    
+            for (const item of healthTracking) {
+                const docID = `${userID}_${item.name}_${dateTime}`;
+    
+                await setDoc(
+                    doc(db, 'dailyHealthTracking', docID),
+                    {
+                        userID: userID,
+                        name: item.name,
+                        vitals: item.vitals,
+                        dateTime: dateTime,
+                        icon: item.icon
+                    }
+                );
+            }
+    
+            // =========================
+            // HEALTH HABIT RECOMMENDATION
+            // WATER
+            // =========================
+    
+            const waterAmount = waterIntake.filter(cup => cup).length;
+    
+            const habits = [
+                {
+                    name: 'Water',
+                    detail: 'Drink water throughout the day',
+                    amount: waterAmount
+                },
+                {
+                    name: 'Exercise',
+                    detail: 'Daily physical activity',
+                    amount: exercise
+                },
+                {
+                    name: 'Sleep',
+                    detail: 'Hours of sleep',
+                    amount: sleep
+                }
+            ];
+    
+            for (const habit of habits) {
+                const docID = `${userID}_${habit.name}_${dateTime}`;
+    
+                await setDoc(
+                    doc(db, 'healthHabitRecommendation', docID),
+                    {
+                        userID: userID,
+                        name: habit.name,
+                        detail: habit.detail,
+                        dailyHabitTraking: {
+                            dateTime: dateTime,
+                            amount: habit.amount
+                        }
+                    }
+                );
+            }
+    
+            console.log('Health data saved successfully!');
+    
+        } catch (error) {
+            console.error('Error saving health data:', error);
+        }
+    };
+                          
+
     const renderVitalsItem = ({item}) => (
         <View style={{marginVertical: '3'}}>
         <View style={{flexDirection:'row', justifyContent: 'space-between', marginVertical: 3
@@ -350,19 +440,39 @@ const DailyHealthTrackScreen = () => {
 
         </View>
 
-        <TextInput mode="flat" placeholder="Add any symptoms or notes" 
-        multiline numberOfLines={3} style={styles.notesInput} underlineColor="transparent" 
-        activeUnderlineColor="transparent" />
+        <TextInput
+    mode="flat"
+    placeholder="Add any symptoms or notes"
+    value={notes}
+    onChangeText={setNotes}
+    multiline
+    numberOfLines={3}
+    style={styles.notesInput}
+    underlineColor="transparent"
+    activeUnderlineColor="transparent"
+/>
     </Card.Content>
 </Card>
 
-<Button  mode="contained" buttonColor='purple'> Save </Button>
+<Button  mode="contained" buttonColor='purple' onPress={save} > Save </Button>
  
     </ScrollView>
   )
 }
 
-export default DailyHealthTrackScreen
+const styles = StyleSheet.create({
+        notesHeader: {
+            flexDirection: 'row',
+            justifyContent: 'space-between',
+            alignItems: 'center',},
+        notesTitle: {
+            fontWeight: '700',
+            color: 'black',},
+        notesInput: {
+            backgroundColor: 'white',
+            borderRadius: 12,
+            minHeight: 60,},
+    });
 
-const styles = StyleSheet.create({})
+export default DailyHealthTrackScreen
 
