@@ -3,7 +3,7 @@ import { View, StyleSheet, Image, Alert } from 'react-native'
 import { Text, Button, ActivityIndicator, SegmentedButtons } from 'react-native-paper'
 import { CameraView, useCameraPermissions } from 'expo-camera'
 
-const PrescriptionScanScreen = () => {
+const PrescriptionScanScreen = ({navigation}) => {
   const cameraRef = useRef(null)
 
   const [permission, requestPermission] = useCameraPermissions()
@@ -75,67 +75,152 @@ const PrescriptionScanScreen = () => {
   }
 
   // For now just test the captured image
-  const usePhoto = async () => {
+const usePhoto = async () => {
   try {
-        console.log('API KEY EXISTS:', !!process.env.EXPO_PUBLIC_OPENAI_API_KEY)
+    console.log(
+      'API KEY EXISTS:',
+      !!process.env.EXPO_PUBLIC_OPENAI_API_KEY
+    )
+
     console.log('PHOTO URI:', photo)
     console.log('BASE64 EXISTS:', !!photoBase64)
     console.log('BASE64 LENGTH:', photoBase64?.length)
+
     setLoading(true)
 
-const response = await fetch(
-  'https://api.openai.com/v1/responses',
-  {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      Authorization:
-        `Bearer ${process.env.EXPO_PUBLIC_OPENAI_API_KEY}`,
-    },
-    body: JSON.stringify({
-      model: 'gpt-5.6',
-      input: [
-        {
-          role: 'user',
-          content: [
+    const response = await fetch(
+      'https://api.openai.com/v1/responses',
+      {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization:
+            `Bearer ${process.env.EXPO_PUBLIC_OPENAI_API_KEY}`,
+        },
+
+        body: JSON.stringify({
+          model: 'gpt-5.6',
+
+          input: [
             {
-              type: 'input_text',
-              text: `
+              role: 'user',
+
+              content: [
+                {
+                  type: 'input_text',
+
+                  text: `
 Analyze this medication image.
 
-Return the medication name, dosage,
-frequency, and instructions.
-              `,
-            },
-            {
-              type: 'input_image',
-              image_url:
-                `data:image/jpeg;base64,${photoBase64}`,
+Identify the medication from the image and provide
+general medication information.
+
+Return ONLY valid JSON in exactly this format:
+
+{
+  "name": "",
+  "dosage": "",
+  "frequency": "",
+  "sideEffect": [],
+  "time": [],
+  "startDate": "",
+  "thingsToAvoid": [],
+  "bestWayToTake": [],
+  "quantity": null
+}
+
+Rules:
+
+- name should be the medication name visible in the image.
+- dosage should only come from the image.
+- frequency should only come from the prescription instructions.
+- quantity should only come from the image.
+- startDate should only be populated if visible.
+- time should only contain times specifically indicated.
+- sideEffect can contain common known side effects.
+- thingsToAvoid can contain common medication precautions.
+- bestWayToTake can contain general administration guidance.
+- Do not guess missing prescription-specific information.
+- Return JSON only. No markdown.
+                  `,
+                },
+
+                {
+                  type: 'input_image',
+
+                  image_url:
+                    `data:image/jpeg;base64,${photoBase64}`,
+                },
+              ],
             },
           ],
-        },
-      ],
-    }),
-  }
-)
+        }),
+      }
+    )
 
-console.log('STATUS:', response.status)
+    console.log('STATUS:', response.status)
 
-const data = await response.json()
+    const data = await response.json()
 
 console.log('OPENAI FULL RESPONSE:')
 console.log(JSON.stringify(data, null, 2))
 
-    console.log(response.output_text)
-  } catch (error) {
-    console.log(error)
+if (!response.ok) {
+  console.log('OPENAI ERROR:', data)
+
+  Alert.alert(
+    'Error',
+    data?.error?.message ||
+      'Unable to analyze medication.'
+  )
+
+  return
+}
+
+const messageOutput = data.output.find(
+  item => item.type === 'message'
+)
+
+const outputText =
+  messageOutput?.content?.find(
+    item => item.type === 'output_text'
+  )?.text
+
+console.log('OUTPUT TEXT:', outputText)
+
+if (!outputText) {
+  throw new Error('No text returned from OpenAI')
+}
+
+const medication = JSON.parse(outputText)
+
+console.log('MEDICATION OBJECT:')
+console.log(medication)
+
+navigation.navigate(
+  'Medication Detail',
+  {
+    medication
+  }
+)
+  }
+  catch (error) {
+
+    console.log(
+      'USE PHOTO ERROR:',
+      error
+    )
 
     Alert.alert(
       'Error',
       'Unable to analyze medication.'
     )
-  } finally {
+
+  }
+  finally {
+
     setLoading(false)
+
   }
 }
 
