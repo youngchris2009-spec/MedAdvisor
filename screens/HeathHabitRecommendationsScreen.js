@@ -1,53 +1,61 @@
-import React, { useState } from 'react'
+import React, { useEffect, useState } from 'react'
 import { View, StyleSheet, ScrollView, TouchableOpacity } from 'react-native'
-import { Text, Card, SegmentedButtons } from 'react-native-paper'
+import { Text, Card, SegmentedButtons, Icon } from 'react-native-paper'
+import { collection, getDocs } from 'firebase/firestore'
+import { db } from './firebase'
 
-const HealthHabitRecommendationsScreen = () => {
+const HealthHabitRecommendationsScreen = ( ) => {
 
   const [category, setCategory] = useState('forYou')
+  const [medications, setMedications] = useState([])
+  const [loading, setLoading] = useState(true)
 
-  const habits = [
-    {
-      id: '1',
-      icon: '🏃',
-      title: 'Walk 30 Minutes Daily',
-      description: 'Improve heart health and boost energy.',
-      category: 'exercise',
-    },
-    {
-      id: '2',
-      icon: '💧',
-      title: 'Drink 8 Glasses of Water',
-      description: 'Stay hydrated and support metabolism.',
-      category: 'hydration',
-    },
-    {
-      id: '3',
-      icon: '🍎',
-      title: 'Eat More Fruits & Veggies',
-      description: 'Improve immunity and digestion.',
-      category: 'diet',
-    },
-    {
-      id: '4',
-      icon: '🌙',
-      title: '7–8 Hours of Sleep',
-      description: 'Good sleep improves focus and mood.',
-      category: 'sleep',
-    },
-    {
-      id: '5',
-      icon: '🍭',
-      title: 'Reduce Sugar Intake',
-      description: 'Helps in maintaining healthy weight.',
-      category: 'diet',
-    },
-  ]
+  // Get medications from Firebase
+  useEffect(() => {
+    const getMedications = async () => {
+      try {
+        const medicationRef = collection(
+          db,
+  
+          'medications'
+        )
+
+        const snapshot = await getDocs(medicationRef)
+
+        const medicationData = snapshot.docs.map(doc => ({
+          id: doc.id,
+          ...doc.data(),
+        }))
+
+        setMedications(medicationData)
+      } catch (error) {
+        console.error('Error getting medications:', error)
+      } finally {
+        setLoading(false)
+      }
+    }
+
+
+      getMedications()
+  }, [])
+
+
+  // Create recommendations based on medications
+  const recommendations = medications.map((medication) => ({
+    id: medication.id,
+    icon: 'pill',
+    color: '#611F84',
+    title: `Take ${medication.name}`,
+    description: `${medication.dosage} • ${medication.frequency}`,
+    category: 'medication',
+  }))
+
 
   const displayedHabits =
     category === 'forYou'
-      ? habits
-      : habits
+      ? recommendations
+      : recommendations
+
 
   return (
     <ScrollView
@@ -102,67 +110,82 @@ const HealthHabitRecommendationsScreen = () => {
       />
 
 
-      {/* Habit List */}
+      {/* Loading */}
 
-      <View style={styles.habitList}>
-
-        {displayedHabits.map((habit) => (
-
-          <TouchableOpacity
-            key={habit.id}
-            activeOpacity={0.7}
-            onPress={() => {
-              console.log(
-                'Selected habit:',
-                habit.title
-              )
-            }}
-          >
-
-            <Card style={styles.card}>
-
-              <Card.Content style={styles.cardContent}>
-
-                {/* Icon */}
-
-                <View style={styles.iconContainer}>
-
-                  <Text style={styles.icon}>
-                    {habit.icon}
-                  </Text>
-
-                </View>
+      {loading && (
+        <Text style={styles.message}>
+          Loading recommendations...
+        </Text>
+      )}
 
 
-                {/* Text */}
+      {/* No medications */}
 
-                <View style={styles.textContainer}>
+      {!loading && medications.length === 0 && (
+        <Text style={styles.message}>
+          No medications found.
+        </Text>
+      )}
 
-                  <Text
-                    variant="titleMedium"
-                    style={styles.habitTitle}
-                  >
-                    {habit.title}
-                  </Text>
 
-                  <Text
-                    variant="bodyMedium"
-                    style={styles.description}
-                  >
-                    {habit.description}
-                  </Text>
+      {/* Recommendations */}
 
-                </View>
+      {!loading && (
+        <View style={styles.habitList}>
 
-              </Card.Content>
+          {displayedHabits.map((habit) => (
 
-            </Card>
+            <TouchableOpacity
+              key={habit.id}
+              activeOpacity={0.7}
+              onPress={() => {
+                console.log('Selected:', habit.title)
+              }}
+            >
 
-          </TouchableOpacity>
+              <Card style={styles.card}>
 
-        ))}
+                <Card.Content style={styles.cardContent}>
 
-      </View>
+                  <View style={styles.iconContainer}>
+
+                    <Icon
+                      source={habit.icon}
+                      size={34}
+                      color={habit.color}
+                    />
+
+                  </View>
+
+
+                  <View style={styles.textContainer}>
+
+                    <Text
+                      variant="titleMedium"
+                      style={styles.habitTitle}
+                    >
+                      {habit.title}
+                    </Text>
+
+                    <Text
+                      variant="bodyMedium"
+                      style={styles.description}
+                    >
+                      {habit.description}
+                    </Text>
+
+                  </View>
+
+                </Card.Content>
+
+              </Card>
+
+            </TouchableOpacity>
+
+          ))}
+
+        </View>
+      )}
 
     </ScrollView>
   )
@@ -184,9 +207,6 @@ const styles = StyleSheet.create({
     paddingBottom: 30,
   },
 
-
-  /* HEADER */
-
   header: {
     marginBottom: 20,
   },
@@ -200,15 +220,9 @@ const styles = StyleSheet.create({
     opacity: 0.65,
   },
 
-
-  /* TABS */
-
   segmentedButtons: {
     marginBottom: 18,
   },
-
-
-  /* HABITS */
 
   habitList: {
     gap: 12,
@@ -225,9 +239,6 @@ const styles = StyleSheet.create({
     paddingVertical: 12,
   },
 
-
-  /* ICON */
-
   iconContainer: {
     width: 65,
     height: 65,
@@ -237,13 +248,6 @@ const styles = StyleSheet.create({
     backgroundColor: '#F2F5FF',
     marginRight: 15,
   },
-
-  icon: {
-    fontSize: 34,
-  },
-
-
-  /* TEXT */
 
   textContainer: {
     flex: 1,
@@ -257,6 +261,12 @@ const styles = StyleSheet.create({
   description: {
     opacity: 0.65,
     lineHeight: 20,
+  },
+
+  message: {
+    textAlign: 'center',
+    marginTop: 30,
+    opacity: 0.6,
   },
 
 })
