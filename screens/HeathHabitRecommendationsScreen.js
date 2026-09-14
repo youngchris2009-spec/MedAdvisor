@@ -2,7 +2,7 @@ import React, { useEffect, useState } from 'react'
 import { View, StyleSheet, ScrollView, TouchableOpacity, Alert } from 'react-native'
 import { Text, Card, SegmentedButtons, Icon, ActivityIndicator } from 'react-native-paper'
 import { collection, getDocs } from 'firebase/firestore'
-import { db } from './firebase'
+import { db } from '../firebase'
 
 const HealthHabitRecommendationsScreen = ({ navigation }) => {
 
