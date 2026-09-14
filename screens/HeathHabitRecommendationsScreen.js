@@ -394,7 +394,7 @@ Use exactly this format:
           <Text style={styles.message}>
 
             {loadingMedications
-              ? 'Loading medications...'
+              ? 'Creating recommendations...'
               : 'Creating recommendations...'}
 
           </Text>
