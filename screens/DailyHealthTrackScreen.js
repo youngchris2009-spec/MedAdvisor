@@ -18,7 +18,8 @@ const DailyHealthTrackScreen = () => {
     const [selectedMood, setSelectedMood] = useState(null);
     const [notes, setNotes] = useState('');
 
-    const vitals = [{ name: 'Weight: ', vitals: weight, unit: 'lbs', icon: 'scale-bathroom', color: 'navy', setValue: setWeight },
+    const vitals = [
+    { name: 'Weight: ', vitals: weight, unit: 'lbs', icon: 'scale-bathroom', color: 'navy', setValue: setWeight },
     { name: 'Blood Pressure: ', vitals: bloodPressure, unit: 'mmHg', icon: 'gauge', color: 'orange', setValue: setBloodPressure },
     { name: 'Blood Sugar: ', vitals: bloodSugar, unit: ' mg/dL', icon: 'water', color: 'red', setValue: setBloodSugar },
     { name: 'Heart Rate: ', vitals: heartRate, unit: 'bpm', icon: 'heart', color: 'red', setValue: setHeartRate }
@@ -188,6 +189,11 @@ const DailyHealthTrackScreen = () => {
                 }
 
             }
+            if (latest['Notes']) {
+                setNotes(
+                    latest['Notes'].vitals?.toString() || ''
+                );
+            }
 
         }
         catch (error) {
@@ -204,7 +210,7 @@ const DailyHealthTrackScreen = () => {
 
     const save = async () => {
         try {
-            const userID = '123'; // Replace this with the actual logged-in user's ID
+            const userID = '12345'; // Replace this with the actual logged-in user's ID
             const dateTime = new Date().toISOString();
 
             // =========================
@@ -237,6 +243,11 @@ const DailyHealthTrackScreen = () => {
                     name: 'Mood',
                     vitals: selectedMood,
                     icon: mood[selectedMood].icon
+                },
+                {
+                    name: 'Notes',
+                    vitals: notes,
+                    icon: 'note-text'
                 }
             ];
 
@@ -606,30 +617,34 @@ const DailyHealthTrackScreen = () => {
                 </Card.Content>
             </Card>
 
-            <Card style={{ marginBottom: 13 }}>
-                <Card.Content>
-                    <View style={styles.notesHeader}>
-                        <Card.Title
-                            title="Notes"
-                            left={LeftContent}
-                        />
+<Card style={{ marginBottom: 13 }}>
+    <Card.Content>
+        <Text style={{
+            fontSize: 18,
+            fontWeight: 'bold',
+            marginBottom: 10
+        }}>
+            Notes
+        </Text>
 
+        <TextInput
+            placeholder="Tap here to add symptoms or notes..."
+            value={notes}
+            onChangeText={setNotes}
+            multiline={true}
+            numberOfLines={5}
+            textAlignVertical="top"
+            style={{
+                backgroundColor: 'white',
+                borderRadius: 10,
+                padding: 12,
+                minHeight: 120,
+                fontSize: 16
+            }}
+        />
+    </Card.Content>
+</Card>
 
-                    </View>
-
-                    <TextInput
-                        mode="flat"
-                        placeholder="Add any symptoms or notes"
-                        value={notes}
-                        onChangeText={setNotes}
-                        multiline
-                        numberOfLines={3}
-                        style={styles.notesInput}
-                        underlineColor="transparent"
-                        activeUnderlineColor="transparent"
-                    />
-                </Card.Content>
-            </Card>
 
             <Button mode="contained" buttonColor='purple' onPress={save} > Save </Button>
 
