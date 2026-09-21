@@ -1,21 +1,8 @@
 import React, { useEffect, useState } from 'react';
 
-import {
-  View,
-  ScrollView,
-  StyleSheet,
-  TouchableOpacity,
-  ActivityIndicator,
-} from 'react-native';
+import {View, ScrollView, StyleSheet, TouchableOpacity, ActivityIndicator,} from 'react-native';
 
-import {
-  Text,
-  Card,
-  ProgressBar,
-  IconButton,
-  Button,
-  Divider,
-} from 'react-native-paper';
+import {Text, Card, ProgressBar, IconButton, Button, Divider,} from 'react-native-paper';
 
 import { doc, getDoc } from 'firebase/firestore';
 import { auth, db } from '../firebase';
@@ -25,7 +12,7 @@ import { auth, db } from '../firebase';
 // HEALTH DASHBOARD
 // ======================================================
 
-const HealthDashboardScreen = () => {
+const MainScreen = () => {
 
   // ====================================================
   // USER DATA
@@ -46,22 +33,24 @@ const HealthDashboardScreen = () => {
 
       try {
 
-        const user = auth.currentUser;
+        // const user = auth.currentUser;
 
-        // No one is logged in
-        if (!user) {
-          setError('No user is currently logged in.');
-          setLoading(false);
-          return;
-        }
+        // // No one is logged in
+        // if (!user) {
+        //   setError('No user is currently logged in.');
+        //   setLoading(false);
+        //   return;
+        // }
 
         // Reference to:
         // users/{user.uid}
 
+        const userId = 'YIuwbxGpb1OMWnNzOGiJgJsA1Fr1';
+
         const userRef = doc(
           db,
           'users',
-          user.uid
+          userId
         );
 
         // Get document
@@ -840,7 +829,7 @@ const HealthDashboardScreen = () => {
 };
 
 
-export default HealthDashboardScreen;
+export default MainScreen;
 
 
 
