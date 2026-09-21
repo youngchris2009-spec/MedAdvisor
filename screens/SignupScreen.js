@@ -1,24 +1,52 @@
-import { StyleSheet, View, ScrollView } from 'react-native'
-import { Text, TextInput, Button, Divider, Menu, Checkbox } from 'react-native-paper'
-import React, { useState } from 'react'
+import React, { useState } from 'react';
+import {
+  StyleSheet,
+  View,
+  ScrollView,
+  Alert,
+} from 'react-native';
 
-const SignupScreen = () => {
+import {
+  Text,
+  TextInput,
+  Button,
+  Divider,
+  Menu,
+  Checkbox,
+} from 'react-native-paper';
+
+import { createUserWithEmailAndPassword } from 'firebase/auth';
+import { doc, setDoc } from 'firebase/firestore';
+
+import { auth, db } from '../firebase';
+
+const SignUpScreen = ({ navigation }) => {
+
+  // -----------------------------
+  // Personal Information
+  // -----------------------------
+
+  const [name, setName] = useState('');
+  const [dateOfBirth, setDateOfBirth] = useState('');
+  const [gender, setGender] = useState('');
+  const [height, setHeight] = useState('');
+  const [weight, setWeight] = useState('');
+  const [allergies, setAllergies] = useState('');
+
+  // -----------------------------
+  // Login Information
+  // -----------------------------
+
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
+
+  // -----------------------------
+  // Medical Conditions
+  // -----------------------------
+
   const [menuVisible, setMenuVisible] = useState(false);
   const [selectedConditions, setSelectedConditions] = useState([]);
-
-  const [exerciseMenuVisible, setExerciseMenuVisible] = useState(false)
-  const [smokingMenuVisible, setSmokingMenuVisible] = useState(false)
-  const [alcoholMenuVisible, setAlcoholMenuVisible] = useState(false)
-  const [sleepMenuVisible, setSleepMenuVisible] = useState(false)
-  const [dietMenuVisible, setDietMenuVisible] = useState(false)
-  const [waterMenuVisible, setWaterMenuVisible] = useState(false)
-
-  const [exercise, setExercise] = useState('')
-  const [smoking, setSmoking] = useState('')
-  const [alcohol, setAlcohol] = useState('')
-  const [sleep, setSleep] = useState('')
-  const [diet, setDiet] = useState('')
-  const [water, setWater] = useState('')
 
   const conditions = [
     'None',
@@ -33,441 +61,608 @@ const SignupScreen = () => {
     'Other',
   ];
 
+  const toggleCondition = (condition) => {
+
+    if (condition === 'None') {
+      setSelectedConditions(['None']);
+      return;
+    }
+
+    let updatedConditions = [...selectedConditions];
+
+    // Remove "None" if another condition is selected
+    updatedConditions = updatedConditions.filter(
+      item => item !== 'None'
+    );
+
+    if (updatedConditions.includes(condition)) {
+      updatedConditions = updatedConditions.filter(
+        item => item !== condition
+      );
+    } else {
+      updatedConditions.push(condition);
+    }
+
+    setSelectedConditions(updatedConditions);
+  };
+
+  const displayValue =
+    selectedConditions.length === 0
+      ? 'Select medical conditions'
+      : selectedConditions.join(', ');
+
+  // -----------------------------
+  // Lifestyle
+  // -----------------------------
+
+  const [exerciseMenuVisible, setExerciseMenuVisible] = useState(false);
+  const [smokingMenuVisible, setSmokingMenuVisible] = useState(false);
+  const [alcoholMenuVisible, setAlcoholMenuVisible] = useState(false);
+
+  const [exercise, setExercise] = useState('');
+  const [smoking, setSmoking] = useState('');
+  const [alcohol, setAlcohol] = useState('');
+
+  const [sleep, setSleep] = useState('');
+  const [diet, setDiet] = useState('');
+  const [water, setWater] = useState('');
+
   const exerciseOptions = [
     'Never',
     '1-2 times a week',
     '3-4 times a week',
     '5+ times a week',
-    'Daily',
-  ]
+  ];
 
   const smokingOptions = [
     'Never',
+    'Former smoker',
     'Occasionally',
     'Daily',
-    'Former smoker',
-  ]
+  ];
 
   const alcoholOptions = [
     'Never',
     'Occasionally',
     '1-2 times a week',
-    '3-4 times a week',
-    '5+ times a week',
-  ]
-
-  const sleepOptions = [
-    "Less than 5 hours",
-    "5–6 hours",
-    "6–7 hours",
-    "7–8 hours",
-    "8–9 hours",
-    "More than 9 hours",
+    '3+ times a week',
   ];
 
-  const dietOptions = [
-    "Balanced",
-    "Vegetarian",
-    "Vegan",
-    "High Protein",
-    "Low Carb",
-    "Other",
-  ];
+  // -----------------------------
+  // Register User
+  // -----------------------------
 
-  const waterOptions = [
-    "Less than 2 glasses",
-    "2–4 glasses",
-    "4–6 glasses",
-    "6–8 glasses",
-    "8–10 glasses",
-    "More than 10 glasses",
-  ];
+  const register = async () => {
 
-  const toggleCondition = (condition) => {
-    if (selectedConditions.includes(condition)) {
-      setSelectedConditions(
-        selectedConditions.filter(item => item !== condition)
+    try {
+
+      // Basic validation
+      if (!name.trim()) {
+        Alert.alert(
+          'Missing Information',
+          'Please enter your name.'
+        );
+        return;
+      }
+
+      if (!email.trim()) {
+        Alert.alert(
+          'Missing Information',
+          'Please enter your email.'
+        );
+        return;
+      }
+
+      if (!password) {
+        Alert.alert(
+          'Missing Information',
+          'Please enter a password.'
+        );
+        return;
+      }
+
+      if (password !== confirmPassword) {
+        Alert.alert(
+          'Password Error',
+          'Passwords do not match.'
+        );
+        return;
+      }
+
+      // -----------------------------
+      // Create Firebase Auth account
+      // -----------------------------
+
+      const userCredential =
+        await createUserWithEmailAndPassword(
+          auth,
+          email.trim(),
+          password
+        );
+
+      const user = userCredential.user;
+
+      // -----------------------------
+      // Convert allergies to a list
+      // -----------------------------
+
+      const allergiesList = allergies
+        .split(',')
+        .map(item => item.trim())
+        .filter(item => item !== '');
+
+      // -----------------------------
+      // Create Firestore user data
+      // -----------------------------
+
+      const userData = {
+
+        email: user.email,
+
+        name: name.trim(),
+
+        dateOfBirth: dateOfBirth.trim(),
+
+        gender: gender.trim(),
+
+        height: height.trim(),
+
+        weight: weight.trim(),
+
+        allergies: allergiesList,
+
+        medicalConditions: selectedConditions,
+
+        lifeStyle: {
+
+          question: [
+            'Exercise',
+            'Smoking',
+            'Alcohol',
+            'Sleep',
+            'Diet',
+            'Water',
+          ],
+
+          answer: [
+            exercise,
+            smoking,
+            alcohol,
+            sleep,
+            diet,
+            water,
+          ],
+        },
+      };
+
+      // -----------------------------
+      // Save user profile
+      // -----------------------------
+
+      await setDoc(
+        doc(db, 'users', user.uid),
+        userData
       );
-    } else {
-      setSelectedConditions([
-        ...selectedConditions,
-        condition
-      ]);
+
+      Alert.alert(
+        'Registration Complete',
+        'Your account has been created successfully!',
+        [
+          {
+            text: 'OK',
+            onPress: () => {
+              navigation.replace('My Medication');
+            },
+          },
+        ]
+      );
+
+    } catch (error) {
+
+      console.log('Registration error:', error);
+
+      if (error.code === 'auth/email-already-in-use') {
+
+        Alert.alert(
+          'Registration Error',
+          'An account with this email already exists.'
+        );
+
+      } else if (error.code === 'auth/invalid-email') {
+
+        Alert.alert(
+          'Registration Error',
+          'Please enter a valid email address.'
+        );
+
+      } else if (error.code === 'auth/weak-password') {
+
+        Alert.alert(
+          'Registration Error',
+          'The password is too weak.'
+        );
+
+      } else {
+
+        Alert.alert(
+          'Registration Error',
+          'Something went wrong while creating your account.'
+        );
+      }
     }
   };
 
-  const displayValue =
-    selectedConditions.length === 0
-      ? 'None'
-      : selectedConditions.length === 1
-        ? selectedConditions[0]
-        : `${selectedConditions.length} conditions selected`
+  // -----------------------------
+  // Screen
+  // -----------------------------
 
   return (
-    <ScrollView style={{ marginTop: 20, marginHorizontal: 10 }}>
-      <View style={{ marginBottom: 5 }}>
-        <Text variant="headlineMedium">Create Your Profile</Text>
-        <Text variant="bodyLarge" style={{ margin: 7 }}>This information helps us provide {"\n"} personalized recommendations.</Text>
-      </View>
-      <Divider></Divider>
-      <View style={{ marginTop: 5 }}>
-        <Text variant="labelLarge">Personal Information</Text>
-        <TextInput mode="outlined" style={{ margin: 1 }} label="Full Name" />
-        <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
-          <TextInput mode="outlined" style={{ flex: 1, margin: 1 }} label="Date of Birth" />
-          <TextInput mode="outlined" style={{ flex: 1, margin: 1 }} label="Gender" />
-        </View>
-        <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
-          <TextInput mode="outlined" style={{ flex: 1, margin: 1 }} label="Height" />
-          <TextInput mode="outlined" style={{ flex: 1, margin: 1 }} label="Weight" />
-        </View>
-      </View>
-      <View style={{ marginTop: 20 }}>
-        <Text variant="labelLarge">Health Information</Text>
-        <TextInput mode="outlined" style={{ margin: 1 }} label="Alergies(if any)" />
-        {/* Medical Condition Dropdown */}
-        <Menu
-          visible={menuVisible}
-          onDismiss={() => setMenuVisible(false)}
-          contentStyle={{
-            width: 320,
-          }}
-          anchor={
-            <TextInput
-              mode="outlined"
-              label="Medical Conditions (if any)"
-              value={displayValue}
-              editable={false}
-              onPressIn={() => setMenuVisible(true)}
-              right={
-                <TextInput.Icon
-                  icon={menuVisible ? "chevron-up" : "chevron-down"}
-                  onPress={() => setMenuVisible(!menuVisible)}
-                />
+    <ScrollView
+      contentContainerStyle={styles.container}
+      keyboardShouldPersistTaps="handled"
+    >
+
+      <Text style={styles.title}>
+        Create Account
+      </Text>
+
+      <Text style={styles.sectionTitle}>
+        Account Information
+      </Text>
+
+      {/* Email */}
+
+      <TextInput
+        mode="outlined"
+        label="Email"
+        style={styles.input}
+        keyboardType="email-address"
+        autoCapitalize="none"
+        autoCorrect={false}
+        value={email}
+        onChangeText={setEmail}
+      />
+
+      {/* Password */}
+
+      <TextInput
+        mode="outlined"
+        label="Password"
+        style={styles.input}
+        secureTextEntry
+        value={password}
+        onChangeText={setPassword}
+      />
+
+      {/* Confirm Password */}
+
+      <TextInput
+        mode="outlined"
+        label="Confirm Password"
+        style={styles.input}
+        secureTextEntry
+        value={confirmPassword}
+        onChangeText={setConfirmPassword}
+      />
+
+      <Divider style={styles.divider} />
+
+      <Text style={styles.sectionTitle}>
+        Personal Information
+      </Text>
+
+      {/* Name */}
+
+      <TextInput
+        mode="outlined"
+        label="Full Name"
+        style={styles.input}
+        value={name}
+        onChangeText={setName}
+      />
+
+      {/* Date of Birth */}
+
+      <TextInput
+        mode="outlined"
+        label="Date of Birth"
+        placeholder="MM/DD/YYYY"
+        style={styles.input}
+        value={dateOfBirth}
+        onChangeText={setDateOfBirth}
+      />
+
+      {/* Gender */}
+
+      <TextInput
+        mode="outlined"
+        label="Gender"
+        style={styles.input}
+        value={gender}
+        onChangeText={setGender}
+      />
+
+      {/* Height */}
+
+      <TextInput
+        mode="outlined"
+        label="Height"
+        placeholder="e.g. 5'8"
+        style={styles.input}
+        value={height}
+        onChangeText={setHeight}
+      />
+
+      {/* Weight */}
+
+      <TextInput
+        mode="outlined"
+        label="Weight"
+        placeholder="e.g. 150 lbs"
+        style={styles.input}
+        value={weight}
+        onChangeText={setWeight}
+      />
+
+      {/* Allergies */}
+
+      <TextInput
+        mode="outlined"
+        label="Allergies"
+        placeholder="Separate multiple allergies with commas"
+        style={styles.input}
+        value={allergies}
+        onChangeText={setAllergies}
+      />
+
+      <Divider style={styles.divider} />
+
+      <Text style={styles.sectionTitle}>
+        Medical Conditions
+      </Text>
+
+      {/* Medical Conditions Menu */}
+
+      <Menu
+        visible={menuVisible}
+        onDismiss={() => setMenuVisible(false)}
+        anchor={
+          <Button
+            mode="outlined"
+            onPress={() => setMenuVisible(true)}
+            style={styles.menuButton}
+          >
+            {displayValue}
+          </Button>
+        }
+        contentStyle={styles.menuContent}
+      >
+
+        <ScrollView style={styles.conditionScroll}>
+
+          {conditions.map((condition) => (
+
+            <Checkbox.Item
+              key={condition}
+              label={condition}
+              status={
+                selectedConditions.includes(condition)
+                  ? 'checked'
+                  : 'unchecked'
               }
-            />
-          }
-        >
-          <ScrollView style={{ maxHeight: 300 }}>
-            {conditions.map((condition) => (
-              <Menu.Item
-                key={condition}
-                title={condition}
-                leadingIcon={() => (
-                  <Checkbox
-                    status={
-                      selectedConditions.includes(condition)
-                        ? "checked"
-                        : "unchecked"
-                    }
-                  />
-                )}
-                onPress={() => toggleCondition(condition)}
-              />
-            ))}
-          </ScrollView>
-        </Menu>
-
-      </View>
-      <View style={{ marginTop: 20 }}>
-
-        <Text
-          variant="labelLarge"
-          style={{ marginBottom: 5 }}
-        >
-          Lifestyle Information
-        </Text>
-
-
-        {/* Exercise */}
-
-        <Menu
-          visible={exerciseMenuVisible}
-          onDismiss={() =>
-            setExerciseMenuVisible(false)
-          }
-          anchor={
-
-            <TextInput
-              mode="outlined"
-              style={styles.input}
-              label="How often do you exercise?"
-              value={exercise}
-              placeholder="Select"
-              editable={false}
-              onPressIn={() =>
-                setExerciseMenuVisible(true)
-              }
-              right={
-                <TextInput.Icon
-                  icon="chevron-down"
-                  onPress={() =>
-                    setExerciseMenuVisible(true)
-                  }
-                />
-              }
-            />
-
-          }
-        >
-
-          {exerciseOptions.map(option => (
-
-            <Menu.Item
-              key={option}
-              title={option}
-              onPress={() => {
-                setExercise(option)
-                setExerciseMenuVisible(false)
-              }}
-            />
-
-          ))}
-
-        </Menu>
-
-
-        {/* Smoking */}
-
-        <Menu
-          visible={smokingMenuVisible}
-          onDismiss={() =>
-            setSmokingMenuVisible(false)
-          }
-          anchor={
-
-            <TextInput
-              mode="outlined"
-              style={styles.input}
-              label="Do you smoke or use tobacco?"
-              value={smoking}
-              placeholder="Select"
-              editable={false}
-              onPressIn={() =>
-                setSmokingMenuVisible(true)
-              }
-              right={
-                <TextInput.Icon
-                  icon="chevron-down"
-                  onPress={() =>
-                    setSmokingMenuVisible(true)
-                  }
-                />
-              }
-            />
-
-          }
-        >
-
-          {smokingOptions.map(option => (
-
-            <Menu.Item
-              key={option}
-              title={option}
-              onPress={() => {
-                setSmoking(option)
-                setSmokingMenuVisible(false)
-              }}
+              onPress={() => toggleCondition(condition)}
             />
 
           ))}
 
-        </Menu>
+        </ScrollView>
 
+      </Menu>
 
-        {/* Alcohol */}
+      <Divider style={styles.divider} />
 
-        <Menu
-          visible={alcoholMenuVisible}
-          onDismiss={() =>
-            setAlcoholMenuVisible(false)
-          }
-          anchor={
+      <Text style={styles.sectionTitle}>
+        Lifestyle
+      </Text>
 
-            <TextInput
-              mode="outlined"
-              style={styles.input}
-              label="How often do you drink alcohol?"
-              value={alcohol}
-              placeholder="Select"
-              editable={false}
-              onPressIn={() =>
-                setAlcoholMenuVisible(true)
-              }
-              right={
-                <TextInput.Icon
-                  icon="chevron-down"
-                  onPress={() =>
-                    setAlcoholMenuVisible(true)
-                  }
-                />
-              }
-            />
+      {/* Exercise */}
 
-          }
-        >
+      <Menu
+        visible={exerciseMenuVisible}
+        onDismiss={() => setExerciseMenuVisible(false)}
+        anchor={
+          <Button
+            mode="outlined"
+            onPress={() => setExerciseMenuVisible(true)}
+            style={styles.menuButton}
+          >
+            {exercise || 'Select exercise frequency'}
+          </Button>
+        }
+      >
 
-          {alcoholOptions.map(option => (
+        {exerciseOptions.map((option) => (
 
-            <Menu.Item
-              key={option}
-              title={option}
-              onPress={() => {
-                setAlcohol(option)
-                setAlcoholMenuVisible(false)
-              }}
-            />
+          <Menu.Item
+            key={option}
+            title={option}
+            onPress={() => {
+              setExercise(option);
+              setExerciseMenuVisible(false);
+            }}
+          />
 
-          ))}
+        ))}
 
-        </Menu>
+      </Menu>
 
-{/* Sleep */}
+      {/* Smoking */}
 
-        <Menu
-          visible={sleepMenuVisible}
-          onDismiss={() =>
-            setSleepMenuVisible(false)
-          }
-          anchor={
+      <Menu
+        visible={smokingMenuVisible}
+        onDismiss={() => setSmokingMenuVisible(false)}
+        anchor={
+          <Button
+            mode="outlined"
+            onPress={() => setSmokingMenuVisible(true)}
+            style={styles.menuButton}
+          >
+            {smoking || 'Select smoking frequency'}
+          </Button>
+        }
+      >
 
-            <TextInput
-              mode="outlined"
-              style={styles.input}
-              label="How much sleep do you get each night?"
-              value={sleep}
-              placeholder="Select"
-              editable={false}
-              onPressIn={() =>
-                setSleepMenuVisible(true)
-              }
-              right={
-                <TextInput.Icon
-                  icon="chevron-down"
-                  onPress={() =>
-                    setSleepMenuVisible(true)
-                  }
-                />
-              }
-            />
+        {smokingOptions.map((option) => (
 
-          }
-        >
+          <Menu.Item
+            key={option}
+            title={option}
+            onPress={() => {
+              setSmoking(option);
+              setSmokingMenuVisible(false);
+            }}
+          />
 
-          {sleepOptions.map(option => (
+        ))}
 
-            <Menu.Item
-              key={option}
-              title={option}
-              onPress={() => {
-                setSleep(option)
-                setSleepMenuVisible(false)
-              }}
-            />
+      </Menu>
 
-          ))}
+      {/* Alcohol */}
 
-        </Menu>
+      <Menu
+        visible={alcoholMenuVisible}
+        onDismiss={() => setAlcoholMenuVisible(false)}
+        anchor={
+          <Button
+            mode="outlined"
+            onPress={() => setAlcoholMenuVisible(true)}
+            style={styles.menuButton}
+          >
+            {alcohol || 'Select alcohol frequency'}
+          </Button>
+        }
+      >
 
-{/* Diet */}
+        {alcoholOptions.map((option) => (
 
-        <Menu
-          visible={dietMenuVisible}
-          onDismiss={() =>
-            setDietMenuVisible(false)
-          }
-          anchor={
+          <Menu.Item
+            key={option}
+            title={option}
+            onPress={() => {
+              setAlcohol(option);
+              setAlcoholMenuVisible(false);
+            }}
+          />
 
-            <TextInput
-              mode="outlined"
-              style={styles.input}
-              label="What is your diet?"
-              value={sleep}
-              placeholder="Select"
-              editable={false}
-              onPressIn={() =>
-                setDietMenuVisible(true)
-              }
-              right={
-                <TextInput.Icon
-                  icon="chevron-down"
-                  onPress={() =>
-                    setDietMenuVisible(true)
-                  }
-                />
-              }
-            />
+        ))}
 
-          }
-        >
+      </Menu>
 
-          {dietOptions.map(option => (
+      {/* Sleep */}
 
-            <Menu.Item
-              key={option}
-              title={option}
-              onPress={() => {
-                setDiet(option)
-                setDietMenuVisible(false)
-              }}
-            />
+      <TextInput
+        mode="outlined"
+        label="Sleep"
+        placeholder="e.g. 7-8 hours"
+        style={styles.input}
+        value={sleep}
+        onChangeText={setSleep}
+      />
 
-          ))}
+      {/* Diet */}
 
-        </Menu>
+      <TextInput
+        mode="outlined"
+        label="Diet"
+        placeholder="e.g. Balanced"
+        style={styles.input}
+        value={diet}
+        onChangeText={setDiet}
+      />
 
-{/* Water */}
+      {/* Water */}
 
-        <Menu
-          visible={waterMenuVisible}
-          onDismiss={() =>
-            setWaterMenuVisible(false)
-          }
-          anchor={
+      <TextInput
+        mode="outlined"
+        label="Daily Water Intake"
+        placeholder="e.g. 6-8 glasses"
+        style={styles.input}
+        value={water}
+        onChangeText={setWater}
+      />
 
-            <TextInput
-              mode="outlined"
-              style={styles.input}
-              label="How many glasses of water do you consume each day?"
-              value={water}
-              placeholder="Select"
-              editable={false}
-              onPressIn={() =>
-                setWaterMenuVisible(true)
-              }
-              right={
-                <TextInput.Icon
-                  icon="chevron-down"
-                  onPress={() =>
-                    setWaterMenuVisible(true)
-                  }
-                />
-              }
-            />
+      {/* Register */}
 
-          }
-        >
+      <Button
+        mode="contained"
+        onPress={register}
+        style={styles.registerButton}
+      >
+        Register
+      </Button>
 
-          {waterOptions.map(option => (
+      <Button
+        mode="text"
+        onPress={() => navigation.navigate('Login')}
+        style={styles.loginButton}
+      >
+        Already have an account? Log In
+      </Button>
 
-            <Menu.Item
-              key={option}
-              title={option}
-              onPress={() => {
-                setWater(option)
-                setWaterMenuVisible(false)
-              }}
-            />
-
-          ))}
-
-        </Menu>
-
-      </View>
     </ScrollView>
-  )
-}
+  );
+};
 
-export default SignupScreen
+const styles = StyleSheet.create({
 
-const styles = StyleSheet.create({})
+  container: {
+    padding: 20,
+    paddingBottom: 40,
+  },
+
+  title: {
+    fontSize: 28,
+    fontWeight: 'bold',
+    marginBottom: 25,
+    textAlign: 'center',
+  },
+
+  sectionTitle: {
+    fontSize: 20,
+    fontWeight: 'bold',
+    marginTop: 10,
+    marginBottom: 15,
+  },
+
+  input: {
+    marginBottom: 15,
+  },
+
+  divider: {
+    marginVertical: 20,
+  },
+
+  menuButton: {
+    marginBottom: 15,
+  },
+
+  menuContent: {
+    maxHeight: 400,
+  },
+
+  conditionScroll: {
+    maxHeight: 350,
+  },
+
+  registerButton: {
+    marginTop: 20,
+    paddingVertical: 5,
+  },
+
+  loginButton: {
+    marginTop: 10,
+  },
+
+});
+
+export default SignUpScreen;
