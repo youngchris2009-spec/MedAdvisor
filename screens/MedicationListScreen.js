@@ -5,6 +5,7 @@ import {
   ScrollView,
   StyleSheet,
   TouchableOpacity,
+  Alert,
 } from 'react-native';
 
 import {
@@ -14,11 +15,16 @@ import {
   Icon,
 } from 'react-native-paper';
 
+
+
 import {
   collection,
   query,
   where,
   getDocs,
+  updateDoc,
+  doc,
+  arrayUnion,
 } from 'firebase/firestore';
 
 import { db } from '../firebase';
@@ -31,7 +37,45 @@ const MedicationListScreen = ({ navigation }) => {
 
   const [search, setSearch] = useState('');
   const [selectedFilter, setSelectedFilter] = useState('All');
+const logMedication = async (medication) => {
+  try {
+    if (!medication?.id) {
+      Alert.alert(
+        'Error',
+        'Medication ID could not be found.'
+      );
+      return;
+    }
 
+    const medicationRef = doc(
+      db,
+      'medication',
+      medication.id
+    );
+
+    const logEntry = {
+      dateTime: new Date().toISOString(),
+      dosage: medication.dosage || '',
+    };
+
+    await updateDoc(medicationRef, {
+      medicationLog: arrayUnion(logEntry),
+    });
+
+    Alert.alert(
+      'Medication Logged',
+      `${medication.name} has been logged.`
+    );
+
+  } catch (error) {
+    console.log('Error logging medication:', error);
+
+    Alert.alert(
+      'Error',
+      'Unable to save medication log.'
+    );
+  }
+};
 
   // ---------------------------------------
   // 1. Load medications from Firebase
@@ -89,36 +133,157 @@ const MedicationListScreen = ({ navigation }) => {
 
   }, []);
 
+  // ---------------------------------------
+// Determine what time of day a medication is
+// ---------------------------------------
+
+const getTimePeriod = (time) => {
+
+  if (!time) {
+    return '';
+  }
+
+  const timeString = time
+    .toString()
+    .toLowerCase()
+    .trim();
+
+
+  // If your database contains
+  // "Morning", "Afternoon", or "Evening"
+  if (timeString.includes('morning')) {
+    return 'Morning';
+  }
+
+  if (timeString.includes('afternoon')) {
+    return 'Afternoon';
+  }
+
+  if (timeString.includes('evening')) {
+    return 'Evening';
+  }
+
+
+  // Handle times such as:
+  // 8:00 AM
+  // 12:00 PM
+  // 6:00 PM
+
+  const match = timeString.match(
+    /(\d{1,2})(?::(\d{2}))?\s*(am|pm)/
+  );
+
+
+  // Couldn't understand the time
+  if (!match) {
+    return '';
+  }
+
+
+  let hour = parseInt(match[1], 10);
+
+  const ampm = match[3];
+
+
+  // Convert PM to 24-hour time
+  if (ampm === 'am') {
+
+    if (hour === 12) {
+      hour = 0;
+    }
+
+  } else {
+
+    if (hour !== 12) {
+      hour += 12;
+    }
+
+  }
+
+
+  // 12:00 AM - 11:59 AM
+  // = Morning
+
+  if (hour >= 0 && hour < 12) {
+    return 'Morning';
+  }
+
+
+  // 12:00 PM - 4:59 PM
+  // = Afternoon
+
+  if (hour >= 12 && hour < 17) {
+    return 'Afternoon';
+  }
+
+
+  // 5:00 PM - 11:59 PM
+  // = Evening
+
+  return 'Evening';
+};
+
 
   // ---------------------------------------
   // Filter medications
   // ---------------------------------------
 
   const filteredMedications = medications.filter(
-    (medication) => {
+  (medication) => {
 
-      const matchesSearch =
-        medication.name
-          ?.toLowerCase()
-          .includes(search.toLowerCase());
+    // -----------------------------------
+    // Search filter
+    // -----------------------------------
 
-      if (selectedFilter === 'All') {
-        return matchesSearch;
-      }
+    const matchesSearch =
+      medication.name
+        ?.toLowerCase()
+        .includes(search.toLowerCase());
 
-      const times = Array.isArray(medication.time)
-        ? medication.time
-        : [];
 
-      const matchesTime = times.some((time) =>
-        time
-          ?.toLowerCase()
-          .includes(selectedFilter.toLowerCase())
-      );
+    // -----------------------------------
+    // If "All" is selected,
+    // show every medication
+    // -----------------------------------
 
-      return matchesSearch && matchesTime;
+    if (selectedFilter === 'All') {
+      return matchesSearch;
     }
-  );
+
+
+    // -----------------------------------
+    // Get medication times
+    // -----------------------------------
+
+    const times = Array.isArray(medication.time)
+      ? medication.time
+      : [medication.time];
+
+
+    // -----------------------------------
+    // Check each medication time
+    // -----------------------------------
+
+    const matchesTime = times.some(
+      (time) => {
+
+        return (
+          getTimePeriod(time) === selectedFilter
+        );
+
+      }
+    );
+
+
+    // -----------------------------------
+    // Medication must match BOTH:
+    // Search + Time
+    // -----------------------------------
+
+    return matchesSearch && matchesTime;
+
+  }
+);
 
 
   // ---------------------------------------
@@ -379,11 +544,26 @@ const MedicationListScreen = ({ navigation }) => {
 
                   <View style={styles.timeContainer}>
 
-                    <Text style={styles.timeText}>
-                      {getMedicationTime(medication)}
-                    </Text>
+  <Text style={styles.timeText}>
+    {getMedicationTime(medication)}
+  </Text>
 
-                  </View>
+  <TouchableOpacity
+    style={styles.logButton}
+    onPress={() => logMedication(medication)}
+  >
+    <Icon
+      source="check"
+      size={16}
+      color="#FFFFFF"
+    />
+
+    <Text style={styles.logButtonText}>
+      Take
+    </Text>
+  </TouchableOpacity>
+
+</View>
 
                 </View>
 
@@ -631,10 +811,9 @@ const styles = StyleSheet.create({
   // -----------------------------------
 
   timeContainer: {
-    alignSelf: 'flex-start',
-
-    marginTop: 2,
-  },
+  alignItems: 'flex-end',
+  marginLeft: 5,
+},
 
   timeText: {
     fontSize: 10,
@@ -731,5 +910,27 @@ const styles = StyleSheet.create({
   bottomSpace: {
     height: 80,
   },
+
+logButton: {
+  flexDirection: 'row',
+  alignItems: 'center',
+  justifyContent: 'center',
+
+  marginTop: 6,
+
+  paddingVertical: 5,
+  paddingHorizontal: 9,
+
+  borderRadius: 7,
+
+  backgroundColor: '#6558F5',
+},
+
+logButtonText: {
+  color: '#FFFFFF',
+  fontSize: 10,
+  fontWeight: '600',
+  marginLeft: 4,
+},
 
 });
