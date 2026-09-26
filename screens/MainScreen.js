@@ -21,13 +21,132 @@ const MainScreen = () => {
   const [userData, setUserData] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [medication, setMedications] = useState([]);
+  const [currentMedicationIndex, setCurrentMedicationIndex] =
+    useState(0);
+
+  const [medicationsLoading, setMedicationsLoading] =
+    useState(true);
+
+  const [takingMedication, setTakingMedication] =
+    useState(false);
+
+  const [medicationError, setMedicationError] =
+    useState('');
 
 
   // ====================================================
   // GET USER FROM FIRESTORE
   // ====================================================
 
-  useEffect(() => {
+  useEffect(() => {// GET MEDICATIONS FROM FIRESTORE
+    const getMedications = async () => {
+      try {
+        setMedicationsLoading(true);
+        setMedicationError('');
+    
+        const user = auth.currentUser;
+    
+        if (!user) {
+          setMedicationError('Please log in to view medications.');
+          return;
+        }
+    
+        // Get all medications belonging to this user
+        const medicationsRef = collection(db, 'medication');
+    
+        const q = query(
+          medicationsRef,
+          where('userID', '==', user.uid)
+        );
+    
+        const snapshot = await getDocs(q);
+    
+        const medicationArray = snapshot.docs.map((doc) => ({
+          id: doc.id,
+          ...doc.data(),
+        }));
+    
+        // Sort by scheduled time
+        medicationArray.sort((a, b) => {
+          const timeA = a.time?.[0] || '11:59 PM';
+          const timeB = b.time?.[0] || '11:59 PM';
+    
+          const convertToMinutes = (time) => {
+            const [clock, period] = time.split(' ');
+            let [hours, minutes] = clock.split(':').map(Number);
+    
+            if (period === 'PM' && hours !== 12) {
+              hours += 12;
+            }
+    
+            if (period === 'AM' && hours === 12) {
+              hours = 0;
+            }
+    
+            return hours * 60 + minutes;
+          };
+    
+          return (
+            convertToMinutes(timeA) -
+            convertToMinutes(timeB)
+          );
+        });
+    
+        setMedications(medicationArray);
+        setCurrentMedicationIndex(0);
+    
+      } catch (error) {
+        console.log('Error loading medications:', error);
+        setMedicationError('Could not load medications.');
+      } finally {
+        setMedicationsLoading(false);
+      }
+    };
+    // LOG MEDICATION AND MOVE TO NEXT
+const handleTakeMedication = async () => {
+  const medication = medications[currentMedicationIndex];
+
+  if (!medication || takingMedication) {
+    return;
+  }
+
+  try {
+    setTakingMedication(true);
+    setMedicationError('');
+
+    const medicationRef = doc(
+      db,
+      'medication',
+      medication.id
+    );
+
+    // Create the medication log entry
+    const logEntry = {
+      dateTime: new Date().toISOString(),
+      dosage: medication.dosage,
+    };
+
+    // Save the entry to Firestore
+    await updateDoc(medicationRef, {
+      medicationLog: arrayUnion(logEntry),
+    });
+
+    // Move to the next medication
+    setCurrentMedicationIndex((previousIndex) =>
+      previousIndex + 1
+    );
+
+  } catch (error) {
+    console.log('Error logging medication:', error);
+
+    setMedicationError(
+      'Could not save medication. Please try again.'
+    );
+  } finally {
+    setTakingMedication(false);
+  }
+};
 
     const getUserData = async () => {
 
@@ -502,74 +621,93 @@ const MainScreen = () => {
 
 
 
-      {/* ==============================================
-          NEXT MEDICATION
-      ============================================== */}
+      
+{/* ==============================================
+    NEXT MEDICATION
+============================================== */}
 
-      <Text style={styles.sectionTitle}>
-        Next Medication
+<Text style={styles.sectionTitle}>
+  Next Medication
+</Text>
+
+{medicationsLoading ? (
+  <Card style={styles.medicationCard}>
+    <Card.Content>
+      <ActivityIndicator color="#5B50E9" />
+      <Text style={{ textAlign: 'center', marginTop: 10 }}>
+        Loading medications...
+      </Text>
+    </Card.Content>
+  </Card>
+) : medications.length === 0 ||
+  currentMedicationIndex >= medications.length ? (
+  <Card style={styles.medicationCard}>
+    <Card.Content>
+      <Text style={styles.medicationName}>
+        {medications.length === 0
+          ? 'No medications found'
+          : 'All medications completed!'}
       </Text>
 
+      <Text style={styles.medicationDosage}>
+        {medications.length === 0
+          ? 'Your medications will appear here.'
+          : 'You have gone through your medication list.'}
+      </Text>
+    </Card.Content>
+  </Card>
+) : (
+  <Card style={styles.medicationCard}>
+    <Card.Content>
+      <View style={styles.medicationTop}>
+        <View style={styles.medicationIconContainer}>
+          <IconButton
+            icon="pill"
+            iconColor="#5C4FEF"
+            size={25}
+            style={styles.iconButton}
+          />
+        </View>
 
-      <Card style={styles.medicationCard}>
+        <View style={styles.medicationInfo}>
+          <Text style={styles.medicationName}>
+            {medications[currentMedicationIndex].name}
+          </Text>
 
-        <Card.Content>
+          <Text style={styles.medicationDosage}>
+            {medications[currentMedicationIndex].dosage}
+          </Text>
+        </View>
 
-          <View style={styles.medicationTop}>
+        <View style={styles.timeBadge}>
+          <Text style={styles.timeText}>
+            {medications[currentMedicationIndex].time?.[0]
+              || 'No time set'}
+          </Text>
+        </View>
+      </View>
 
-            <View
-              style={styles.medicationIconContainer}
-            >
+      {medicationError !== '' && (
+        <Text style={{ color: 'red', marginTop: 10 }}>
+          {medicationError}
+        </Text>
+      )}
 
-              <IconButton
-                icon="pill"
-                iconColor="#5C4FEF"
-                size={25}
-                style={styles.iconButton}
-              />
-
-            </View>
-
-
-            <View style={styles.medicationInfo}>
-
-              <Text style={styles.medicationName}>
-                Aspirin 75mg
-              </Text>
-
-              <Text style={styles.medicationDosage}>
-                1 Tablet
-              </Text>
-
-            </View>
-
-
-            <View style={styles.timeBadge}>
-
-              <Text style={styles.timeText}>
-                09:00 AM
-              </Text>
-
-            </View>
-
-          </View>
-
-
-          <Button
-            mode="contained"
-            buttonColor="#5B50E9"
-            textColor="white"
-            style={styles.takeButton}
-            contentStyle={
-              styles.takeButtonContent
-            }
-          >
-            Take Now
-          </Button>
-
-        </Card.Content>
-
-      </Card>
+      <Button
+        mode="contained"
+        buttonColor="#5B50E9"
+        textColor="white"
+        style={styles.takeButton}
+        contentStyle={styles.takeButtonContent}
+        onPress={handleTakeMedication}
+        loading={takingMedication}
+        disabled={takingMedication}
+      >
+        {takingMedication ? 'Saving...' : 'Take Now'}
+      </Button>
+    </Card.Content>
+  </Card>
+)}
 
 
 
