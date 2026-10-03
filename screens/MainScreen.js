@@ -500,7 +500,17 @@ const OverviewCard = ({ item }) => (
 </TouchableOpacity>
 
       {/* AI INSIGHTS */}
-      <Text style={styles.sectionTitle}>AI Insights</Text>
+      <View style={styles.sectionHeader}>
+  <Text style={styles.sectionTitle}>AI Insights</Text>
+
+    <Button
+      mode="text"
+      compact
+      onPress={() => navigation.navigate('Health Recommendation')}
+    >
+      Recommendations
+    </Button>
+  </View>
 
       {insights.map((insight, index) => (
         <View key={index} style={[styles.insightCard, { backgroundColor: insight.background }]}>
@@ -528,6 +538,8 @@ export default MainScreen;
 const styles = StyleSheet.create({
   loadingContainer: { flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: '#FFFFFF' },
   loadingText: { marginTop: 15, fontSize: 14, color: '#69758A' },
+
+  sectionHeader: {flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginTop: 20,},
 
   errorContainer: { flex: 1, justifyContent: 'center', alignItems: 'center', padding: 30, backgroundColor: '#FFFFFF' },
   errorTitle: { fontSize: 20, fontWeight: '700', color: '#24324B', marginBottom: 10 },
