@@ -50,7 +50,7 @@ const LoginScreen = ({ navigation }) => {
       console.log('User Email:', user.email);
 
       // Go to your main screen
-      navigation.navigate('Home');
+      navigation.navigate('Main');
     } catch (error) {
       console.log('LOGIN ERROR:', error.code);
       console.log('LOGIN ERROR MESSAGE:', error.message);
