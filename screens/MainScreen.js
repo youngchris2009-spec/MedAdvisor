@@ -252,10 +252,22 @@ const OverviewCard = ({ item }) => (
       <Text style={styles.overviewSubtitle}>{item.subtitle}</Text>
 
       {item.viewAll && (
-        <TouchableOpacity onPress={() => navigation.navigate('Medication List')}>
-          <Text style={styles.overviewViewAll}>View All</Text>
-        </TouchableOpacity>
-      )}
+  <View style={styles.overviewViewAll}>
+
+    <TouchableOpacity
+      onPress={() => navigation.navigate('Add Medication')}
+    >
+      <Text style={styles.overviewAdd}>+ Add</Text>
+    </TouchableOpacity>
+
+    <TouchableOpacity
+      onPress={() => navigation.navigate('Medication List')}
+    >
+      <Text style={styles.overviewViewAll}>View All</Text>
+    </TouchableOpacity>
+
+  </View>
+)}
     </View>
   </View>
 );
