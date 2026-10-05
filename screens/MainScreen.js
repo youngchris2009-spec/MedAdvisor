@@ -244,14 +244,8 @@ const OverviewCard = ({ item }) => (
     <View style={[styles.smallIcon, { backgroundColor: `${item.iconColor}22` }]}>
       <IconButton icon={item.icon} iconColor={item.iconColor} size={17} style={styles.iconButton} />
     </View>
-
-    <Text style={styles.overviewTitle}>{item.title}</Text>
-    <Text style={[styles.overviewValue, { color: item.iconColor }]}>{item.value}</Text>
-
-    <View style={styles.overviewBottomRow}>
-      <Text style={styles.overviewSubtitle}>{item.subtitle}</Text>
-
-      {item.viewAll && (
+    
+    {item.viewAll && (
   <View style={styles.overviewViewAll}>
 
     <TouchableOpacity
@@ -268,6 +262,14 @@ const OverviewCard = ({ item }) => (
 
   </View>
 )}
+
+    <Text style={styles.overviewTitle}>{item.title}</Text>
+    <Text style={[styles.overviewValue, { color: item.iconColor }]}>{item.value}</Text>
+
+    <View style={styles.overviewBottomRow}>
+      <Text style={styles.overviewSubtitle}>{item.subtitle}</Text>
+
+      
     </View>
   </View>
 );
@@ -482,7 +484,7 @@ const OverviewCard = ({ item }) => (
         </View>
 
         <View style={{ flex: 1 }}>
-          <Text style={styles.healthStatusTitle}>Health Status</Text>
+          <Text style={styles.healthStatusTitle}>Health Habit Status</Text>
           <Text style={styles.healthStatusGood}>Good</Text>
           <Text style={styles.healthStatusText}>You're doing great! Keep it up.</Text>
         </View>
