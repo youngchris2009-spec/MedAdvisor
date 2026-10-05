@@ -4,6 +4,7 @@ import LoginScreen from './screens/LoginScreen';
 import SignUpScreen from './screens/SignupScreen';
 import MainScreen from './screens/MainScreen';
 import HealthHabitRecommendationsScreen from './screens/HeathHabitRecommendationsScreen';
+import HealthTrendsScreen from './screens/HealthTrends';
 import DailyHealthTrackScreen from './screens/DailyHealthTrackScreen';
 import PrescriptionScanScreen from './screens/PrescriptionScanScreen';
 import MedicationListScreen from './screens/MedicationListScreen';
@@ -23,6 +24,7 @@ const App = () => {
           <Stack.Screen name="Register" component={SignUpScreen} />
           <Stack.Screen name="Main" component={MainScreen} />
           <Stack.Screen name="Daily Health Track" component={DailyHealthTrackScreen} />
+          <Stack.Screen name="Health Trends" component= {HealthTrendsScreen} />
           <Stack.Screen name="Health Recommendation" component={HealthHabitRecommendationsScreen} />
           <Stack.Screen name="Prescript Scan" component={PrescriptionScanScreen} />
           <Stack.Screen name="Medication List" component={MedicationListScreen} />
