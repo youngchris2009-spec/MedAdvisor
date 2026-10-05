@@ -223,13 +223,15 @@ const overview = [
     background: '#EEF3FF',
   },
   {
-  title: 'Vitals',
-  value: 'Good',
-  subtitle: '',
-  icon: 'heart',
-  iconColor: '#8035A1',
-  background: '#EDD7F7',
-  route: 'Daily Health Track',
+      title: 'Vitals',
+      value: 'Good',
+      subtitle: '',
+      icon: 'heart',
+      iconColor: '#8035A1',
+      background: '#EDD7F7',
+      route: 'Health Trends',
+      trends: true,
+  
 },
 ];
 
@@ -244,12 +246,12 @@ const OverviewCard = ({ item }) => (
     <View style={[styles.smallIcon, { backgroundColor: `${item.iconColor}22` }]}>
       <IconButton icon={item.icon} iconColor={item.iconColor} size={17} style={styles.iconButton} />
     </View>
-    
+
     {item.viewAll && (
   <View style={styles.overviewViewAll}>
 
     <TouchableOpacity
-      onPress={() => navigation.navigate('Add Medication')}
+      onPress={() => navigation.navigate('Prescript Scan')}
     >
       <Text style={styles.overviewAdd}>+ Add</Text>
     </TouchableOpacity>
@@ -263,12 +265,24 @@ const OverviewCard = ({ item }) => (
   </View>
 )}
 
+  {item.trends && (
+    <View style={styles.overviewViewAll}>
+  <TouchableOpacity
+  onPress={() => navigation.navigate("Health Trends")}
+  >
+    <Text style={styles.overviewViewAll}>View Trends</Text>
+  </TouchableOpacity>
+  </View>
+  )}
+
+
     <Text style={styles.overviewTitle}>{item.title}</Text>
     <Text style={[styles.overviewValue, { color: item.iconColor }]}>{item.value}</Text>
 
     <View style={styles.overviewBottomRow}>
       <Text style={styles.overviewSubtitle}>{item.subtitle}</Text>
-
+      
+      
       
     </View>
   </View>
