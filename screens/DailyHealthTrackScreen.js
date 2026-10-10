@@ -11,6 +11,10 @@ const DailyHealthTrackScreen = () => {
     const [bloodPressure, setBloodPressure] = useState('');
     const [bloodSugar, setBloodSugar] = useState('');
     const [heartRate, setHeartRate] = useState('');
+    const [foodName, setFoodName] = useState('');
+    const [foodCalories, setFoodCalories] = useState('');
+    const [foodMeal, setFoodMeal] = useState('');
+    const [foodEntries, setFoodEntries] = useState([]);
 
     const [exercise, setExercise] = useState('');
     const [sleep, setSleep] = useState('');
@@ -315,6 +319,38 @@ const DailyHealthTrackScreen = () => {
         }
     };
 
+    const addFoodEntry = () => {
+        if (
+            !foodMeal.trim() ||
+            !foodName.trim() ||
+            foodCalories.trim() === ''
+        ) {
+            return;
+        }
+    
+        const calories = Number(foodCalories);
+    
+        if (!Number.isFinite(calories) || calories < 0) {
+            return;
+        }
+    
+        setFoodEntries(prev => [
+            ...prev,
+            {
+                id: `${Date.now()}-${prev.length}`,
+                meal: foodMeal.trim(),
+                name: foodName.trim(),
+                calories
+            }
+        ]);
+    
+        // Reset all inputs to empty strings
+        setFoodMeal('');
+        setFoodName('');
+        setFoodCalories('');
+    };
+
+
 
     const renderVitalsItem = ({ item }) => (
         <View style={{ marginVertical: '3' }}>
@@ -408,6 +444,8 @@ const DailyHealthTrackScreen = () => {
     )
     return (
         <ScrollView style={{ margin: 15 }}>
+
+            
 
             <Card style={{ marginBottom: 13 }}>
                 <Card.Title
@@ -616,6 +654,129 @@ const DailyHealthTrackScreen = () => {
 
                 </Card.Content>
             </Card>
+
+<Card style={{ marginBottom: 13 }}>
+    <Card.Title
+        title="Food & Diet"
+        subtitle="Keep track of your meals and snacks"
+        left={(props) => (
+            <Icon
+                source="food-apple"
+                size={28}
+                color="green"
+            />
+        )}
+    />
+
+    <Card.Content>
+
+        <TextInput
+            placeholder="What meal is this? (breakfast, lunch, dinner or snack)"
+            value={foodMeal}
+            onChangeText={setFoodMeal}
+            style={{
+                backgroundColor: 'white',
+                borderRadius: 10,
+                paddingHorizontal: 12,
+                marginBottom: 10
+            }}
+        />
+        
+        <TextInput
+            placeholder="What did you eat?"
+            value={foodName}
+            onChangeText={setFoodName}
+            style={{
+                backgroundColor: 'white',
+                borderRadius: 10,
+                paddingHorizontal: 12,
+                marginBottom: 10
+            }}
+        />
+
+        <TextInput
+            placeholder="Calories (kcal)"
+            value={foodCalories}
+            onChangeText={setFoodCalories}
+            keyboardType="numeric"
+            style={{
+                backgroundColor: 'white',
+                borderRadius: 10,
+                paddingHorizontal: 12,
+                marginBottom: 12
+            }}
+        />
+
+        <Button
+            mode="contained"
+            buttonColor="green"
+            icon="plus"
+            onPress={addFoodEntry}
+        >
+            Add Meal or Snack
+        </Button>
+
+        {foodEntries.length > 0 && (
+            <View style={{ marginTop: 18 }}>
+                <Divider style={{ marginBottom: 12 }} />
+
+                <Text style={{
+                    fontSize: 16,
+                    fontWeight: '600',
+                    marginBottom: 10
+                }}>
+                    Today's Food Log
+                </Text>
+
+                {foodEntries.map((item) => (
+                    <View
+                        key={item.id}
+                        style={{
+                            flexDirection: 'row',
+                            justifyContent: 'space-between',
+                            alignItems: 'center',
+                            paddingVertical: 10,
+                            borderBottomWidth: 1,
+                            borderBottomColor: '#EEEEEE'
+                        }}
+                    >
+                        <Text style={{ flex: 1, marginRight: 10 }}>
+                            {item.name}
+                        </Text>
+
+                        <Text style={{
+                            color: '#64748B',
+                            fontWeight: '500'
+                        }}>
+                            {item.calories} kcal
+                        </Text>
+                    </View>
+                ))}
+
+                <View style={{
+                    flexDirection: 'row',
+                    justifyContent: 'space-between',
+                    marginTop: 14
+                }}>
+                    <Text style={{ fontWeight: '600' }}>
+                        Total recorded
+                    </Text>
+
+                    <Text style={{
+                        fontWeight: 'bold',
+                        color: 'green'
+                    }}>
+                        {foodEntries.reduce(
+                            (total, item) => total + item.calories,
+                            0
+                        )} kcal
+                    </Text>
+                </View>
+            </View>
+        )}
+    </Card.Content>
+</Card>
+
 
 <Card style={{ marginBottom: 13 }}>
     <Card.Content>
