@@ -1,9 +1,11 @@
 import React, { useState } from 'react';
+
 import {
     View,
     ScrollView,
     StyleSheet,
-    TextInput
+    TextInput,
+    Alert
 } from 'react-native';
 
 import {
@@ -23,97 +25,141 @@ import {
 import { db } from '../firebase';
 
 
-const MedicationDetailScreen = ({ route }) => {
+const MedicationDetailScreen = ({ route, navigation }) => {
 
-  const medication =
-    route.params?.medication
+    const medication = route.params?.medication;
 
-  console.log(
-    'RECEIVED MEDICATION:',
-    medication
-  )
+    console.log(
+        'RECEIVED MEDICATION:',
+        medication
+    );
+
+
+    // -----------------------------
+    // State
+    // -----------------------------
 
     const [name, setName] =
-  useState(medication?.name || '')
+        useState(medication?.name || '');
 
-const [dosage, setDosage] =
-  useState(medication?.dosage || '')
+    const [dosage, setDosage] =
+        useState(medication?.dosage || '');
 
-const [frequency, setFrequency] =
-  useState(medication?.frequency || '')
+    const [frequency, setFrequency] =
+        useState(medication?.frequency || '');
 
-const [sideEffect, setSideEffect] =
-  useState(medication?.sideEffect || [])
+    const [sideEffect, setSideEffect] =
+        useState(medication?.sideEffect || []);
 
-const [time, setTime] =
-  useState(medication?.time || [])
+    const [time, setTime] =
+        useState(medication?.time || []);
 
-const [startDate, setStartDate] =
-  useState(medication?.startDate || '')
+    const [startDate, setStartDate] =
+        useState(medication?.startDate || '');
 
-const [thingsToAvoid, setThingsToAvoid] =
-  useState(medication?.thingsToAvoid || [])
+    const [thingsToAvoid, setThingsToAvoid] =
+        useState(medication?.thingsToAvoid || []);
 
-const [bestWayToTake, setBestWayToTake] =
-  useState(medication?.bestWayToTake || [])
+    const [bestWayToTake, setBestWayToTake] =
+        useState(medication?.bestWayToTake || []);
 
-const [quantity, setQuantity] =
-  useState(
-    medication?.quantity?.toString() || ''
-  )
+    const [quantity, setQuantity] =
+        useState(
+            medication?.quantity?.toString() || ''
+        );
 
+    const [saving, setSaving] =
+        useState(false);
+
+
+    // -----------------------------
+    // Save Medication
+    // -----------------------------
 
     const saveMedication = async () => {
 
-        try {
+    if (!name.trim()) {
+        Alert.alert(
+            'Missing Information',
+            'Please enter the medication name.'
+        );
+        return;
+    }
 
-            const userID = '12345';
-            // Replace later with logged-in user's Firebase UID
+    try {
 
-            await addDoc(
-                collection(db, 'medication'),
+        setSaving(true);
+
+        const userID = '12345';
+
+        await addDoc(
+            collection(db, 'medication'),
+            {
+                userID: userID,
+                name: name.trim(),
+                dosage: dosage.trim(),
+                frequency: frequency.trim(),
+                sideEffect: sideEffect,
+                time: time,
+                startDate: startDate.trim(),
+                thingsToAvoid: thingsToAvoid,
+                bestWayToTake: bestWayToTake,
+                quantity: quantity
+                    ? Number(quantity)
+                    : 0,
+                medicationLog: [],
+                createdAt: serverTimestamp()
+            }
+        );
+
+        // Show success message
+        Alert.alert(
+            'Success',
+            'Medication saved successfully!',
+            [
                 {
-                    userID: userID,
-
-                    name: name,
-
-                    dosage: dosage,
-
-                    frequency: frequency,
-
-                    sideEffect: sideEffect,
-
-                    time: time,
-
-                    startDate: startDate,
-
-                    thingsToAvoid: thingsToAvoid,
-
-                    bestWayToTake: bestWayToTake,
-
-                    quantity: Number(quantity),
-
-                    medicationLog: [],
-
-                    createdAt: serverTimestamp()
+                    text: 'OK',
+                    onPress: () => {
+                        navigation.navigate('Medication List');
+                    }
                 }
-            );
+            ]
+        );
 
-            console.log('Medication saved');
+    } catch (error) {
 
-        }
-        catch (error) {
+        console.log(
+            'Error saving medication:',
+            error
+        );
 
-            console.log(
-                'Error saving medication:',
-                error
-            );
+        Alert.alert(
+            'Error',
+            'Could not save medication. Please try again.'
+        );
 
-        }
-    };
+    } finally {
 
+        setSaving(false);
+
+    }
+};
+
+
+    // -----------------------------
+    // Render Chips
+    // -----------------------------
 
     const renderList = (items) => {
+
+        if (!items || items.length === 0) {
+            return (
+                <Text style={styles.noData}>
+                    None
+                </Text>
+            );
+        }
+
 
         return (
             <View style={styles.chipContainer}>
@@ -131,12 +177,21 @@ const [quantity, setQuantity] =
 
             </View>
         );
+
     };
 
 
+    // -----------------------------
+    // Screen
+    // -----------------------------
+
     return (
 
-        <ScrollView style={styles.container}>
+        <ScrollView
+            style={styles.container}
+            contentContainerStyle={styles.content}
+        >
+
 
             {/* Medication */}
 
@@ -162,6 +217,7 @@ const [quantity, setQuantity] =
                         value={name}
                         onChangeText={setName}
                         style={styles.input}
+                        placeholder="Medication name"
                     />
 
 
@@ -173,6 +229,7 @@ const [quantity, setQuantity] =
                         value={dosage}
                         onChangeText={setDosage}
                         style={styles.input}
+                        placeholder="e.g. 500 mg"
                     />
 
 
@@ -184,6 +241,7 @@ const [quantity, setQuantity] =
                         value={frequency}
                         onChangeText={setFrequency}
                         style={styles.input}
+                        placeholder="e.g. Once daily"
                     />
 
                 </Card.Content>
@@ -208,10 +266,67 @@ const [quantity, setQuantity] =
                 <Card.Content>
 
                     <Text style={styles.label}>
-                        Time
-                    </Text>
+</Text>
 
-                    {renderList(time)}
+<Text style={styles.label}>
+    Time
+</Text>
+
+{time.map((item, index) => (
+    <View
+        key={index}
+        style={styles.timeRow}
+    >
+
+        <TextInput
+            value={item}
+            onChangeText={(text) => {
+
+                const updatedTimes = [...time];
+
+                updatedTimes[index] = text;
+
+                setTime(updatedTimes);
+
+            }}
+            style={styles.timeInput}
+            placeholder="e.g. 8:00 AM"
+        />
+
+        <Button
+            mode="outlined"
+            onPress={() => {
+
+                const updatedTimes =
+                    time.filter((_, i) => i !== index);
+
+                setTime(updatedTimes);
+
+            }}
+            compact
+        >
+            Remove
+        </Button>
+
+    </View>
+))}
+
+
+<Button
+    mode="outlined"
+    icon="plus"
+    onPress={() => {
+        setTime([
+            ...time,
+            ''
+        ]);
+    }}
+    style={styles.addTimeButton}
+>
+    Add Time
+</Button>
+
+
 
 
                     <Text style={styles.label}>
@@ -222,6 +337,7 @@ const [quantity, setQuantity] =
                         value={startDate}
                         onChangeText={setStartDate}
                         style={styles.input}
+                        placeholder="e.g. 10/01/2026"
                     />
 
                 </Card.Content>
@@ -254,6 +370,7 @@ const [quantity, setQuantity] =
                         onChangeText={setQuantity}
                         keyboardType="numeric"
                         style={styles.input}
+                        placeholder="Number of pills"
                     />
 
                 </Card.Content>
@@ -261,7 +378,7 @@ const [quantity, setQuantity] =
             </Card>
 
 
-            {/* Best way to take */}
+            {/* Best Way To Take */}
 
             <Card style={styles.card}>
 
@@ -284,7 +401,7 @@ const [quantity, setQuantity] =
             </Card>
 
 
-            {/* Things to avoid */}
+            {/* Things To Avoid */}
 
             <Card style={styles.card}>
 
@@ -330,12 +447,19 @@ const [quantity, setQuantity] =
             </Card>
 
 
+            {/* Save Button */}
+
             <Button
                 mode="contained"
                 onPress={saveMedication}
+                loading={saving}
+                disabled={saving}
                 style={styles.saveButton}
             >
-                Save Medication
+                {saving
+                    ? 'Saving...'
+                    : 'Save Medication'
+                }
             </Button>
 
 
@@ -349,7 +473,13 @@ const [quantity, setQuantity] =
 const styles = StyleSheet.create({
 
     container: {
-        margin: 15
+        flex: 1,
+        backgroundColor: '#fff'
+    },
+
+    content: {
+        padding: 15,
+        paddingBottom: 30
     },
 
     card: {
@@ -368,7 +498,8 @@ const styles = StyleSheet.create({
         borderColor: '#ddd',
         borderRadius: 8,
         padding: 10,
-        fontSize: 16
+        fontSize: 16,
+        backgroundColor: '#fff'
     },
 
     chipContainer: {
@@ -382,12 +513,17 @@ const styles = StyleSheet.create({
         marginBottom: 5
     },
 
+    noData: {
+        color: '#777',
+        marginTop: 5
+    },
+
     saveButton: {
         marginTop: 5,
-        marginBottom: 30
+        marginBottom: 20
     }
 
 });
 
 
-export default MedicationDetailScreen;
+export default MedicationDetailScreen
