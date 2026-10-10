@@ -1,9 +1,13 @@
 import React, { useEffect, useState } from "react";
-import { View, StyleSheet, ScrollView, Dimensions, ActivityIndicator } from "react-native";
+import {
+  View,
+  StyleSheet,
+  ScrollView,
+  Dimensions,
+  ActivityIndicator,
+} from "react-native";
 import { Text, Card, IconButton, Surface } from "react-native-paper";
-import { collection, query, where, getDocs } from "firebase/firestore";
 import { LineChart } from "react-native-chart-kit";
-import { db, auth } from "../firebase";
 
 const screenWidth = Dimensions.get("window").width;
 
@@ -13,43 +17,23 @@ const DailyHealthTrackingScreen = () => {
   const [loading, setLoading] = useState(true);
 
   // =====================================================
-  // GET DATA FROM FIREBASE
+  // SAMPLE DATA FOR DEMO — NO FIREBASE REQUIRED
+  // All values are fictional demonstration data.
   // =====================================================
 
   useEffect(() => {
-    getHealthData();
-  }, []);
+    const sampleData = createSampleHealthData();
 
-  const getHealthData = async () => {
-    try {
-      setLoading(true);
+    setHealthData(sampleData);
 
-      const user = auth.currentUser;
-
-
-      const healthRef = collection(db, "dailyHealthTracking");
-      const q = query(healthRef, where("userID", "==", user.uid));
-      const snapshot = await getDocs(q);
-
-      const data = snapshot.docs.map(doc => ({
-        id: doc.id, ...doc.data()
-      }));
-
-      data.sort((a, b) => new Date(a.dateTime) - new Date(b.dateTime));
-
-      setHealthData(data);
-
-      if (data.length > 0) {
-        const mostRecentDate = getDateOnly(data[data.length - 1].dateTime);
-        setSelectedDate(mostRecentDate);
-      }
-    } catch (error) {
-      console.log("Error getting health data:", error);
-    } finally {
-      setLoading(false);
+    if (sampleData.length > 0) {
+      setSelectedDate(
+        getDateOnly(sampleData[sampleData.length - 1].dateTime)
+      );
     }
-  };
 
+    setLoading(false);
+  }, []);
 
   // =====================================================
   // LOADING SCREEN
@@ -59,11 +43,12 @@ const DailyHealthTrackingScreen = () => {
     return (
       <View style={styles.loadingContainer}>
         <ActivityIndicator size="large" />
-        <Text style={styles.loadingText}>Loading your health data...</Text>
+        <Text style={styles.loadingText}>
+          Loading your health data...
+        </Text>
       </View>
     );
   }
-
 
   // =====================================================
   // NO DATA
@@ -80,75 +65,85 @@ const DailyHealthTrackingScreen = () => {
     );
   }
 
-
   // =====================================================
   // SELECTED DAY
   // =====================================================
 
-  const selectedDayData = healthData.filter(item => getDateOnly(item.dateTime) === selectedDate);
-
+  const selectedDayData = healthData.filter(
+    (item) => getDateOnly(item.dateTime) === selectedDate
+  );
 
   // =====================================================
   // FIND VITALS
   // =====================================================
 
-  const bloodPressure = selectedDayData.find(item => item.name?.toLowerCase().includes("blood pressure"));
+  const bloodPressure = selectedDayData.find((item) =>
+    item.name?.toLowerCase().includes("blood pressure")
+  );
 
-  const bloodSugar = selectedDayData.find(item => item.name?.toLowerCase().includes("blood sugar"));
+  const bloodSugar = selectedDayData.find((item) =>
+    item.name?.toLowerCase().includes("blood sugar")
+  );
 
-  const mood = selectedDayData.find(item => item.name?.toLowerCase().includes("mood"));
-
+  const mood = selectedDayData.find((item) =>
+    item.name?.toLowerCase().includes("mood")
+  );
 
   // =====================================================
   // GET DATES
   // =====================================================
 
-  const dates = [...new Set(healthData.map(item => getDateOnly(item.dateTime)))].slice(-7);
+  const dates = [
+    ...new Set(healthData.map((item) => getDateOnly(item.dateTime))),
+  ].slice(-7);
 
-  const chartDates = [...new Set(healthData.map(item => getDateOnly(item.dateTime)))].slice(-14);
-
+  const chartDates = [
+    ...new Set(healthData.map((item) => getDateOnly(item.dateTime))),
+  ].slice(-14);
 
   // =====================================================
   // CHART DATA
   // =====================================================
 
-  const systolicData = chartDates.map(date => {
-    const item = healthData.find(record =>
-      getDateOnly(record.dateTime) === date &&
-      record.name?.toLowerCase().includes("blood pressure")
+  const systolicData = chartDates.map((date) => {
+    const item = healthData.find(
+      (record) =>
+        getDateOnly(record.dateTime) === date &&
+        record.name?.toLowerCase().includes("blood pressure")
     );
 
     return item ? getSystolic(item.vitals) : 0;
   });
 
-
-  const bloodSugarData = chartDates.map(date => {
-    const item = healthData.find(record =>
-      getDateOnly(record.dateTime) === date &&
-      record.name?.toLowerCase().includes("blood sugar")
+  const bloodSugarData = chartDates.map((date) => {
+    const item = healthData.find(
+      (record) =>
+        getDateOnly(record.dateTime) === date &&
+        record.name?.toLowerCase().includes("blood sugar")
     );
 
     return item ? getNumber(item.vitals) : 0;
   });
 
-
-  const moodData = chartDates.map(date => {
-    const item = healthData.find(record =>
-      getDateOnly(record.dateTime) === date &&
-      record.name?.toLowerCase().includes("mood")
+  const moodData = chartDates.map((date) => {
+    const item = healthData.find(
+      (record) =>
+        getDateOnly(record.dateTime) === date &&
+        record.name?.toLowerCase().includes("mood")
     );
 
     return item ? getNumber(item.vitals) * 20 : 0;
   });
-
 
   // =====================================================
   // MAIN SCREEN
   // =====================================================
 
   return (
-    <ScrollView style={styles.container} showsVerticalScrollIndicator={false}>
-
+    <ScrollView
+      style={styles.container}
+      showsVerticalScrollIndicator={false}
+    >
       {/* HEADER */}
 
       <View style={styles.header}>
@@ -156,7 +151,12 @@ const DailyHealthTrackingScreen = () => {
 
         <View style={styles.headerText}>
           <Text style={styles.title}>Health Tracking</Text>
-          <Text style={styles.subtitle}>Track your vitals and daily habits</Text>
+          <Text style={styles.subtitle}>
+            Track your vitals and daily habits
+          </Text>
+          <Text style={styles.demoLabel}>
+            DEMO DATA · FICTIONAL EXAMPLE
+          </Text>
         </View>
 
         <View style={styles.periodButton}>
@@ -165,11 +165,9 @@ const DailyHealthTrackingScreen = () => {
         </View>
       </View>
 
-
       {/* CURRENT VITALS */}
 
       <View style={styles.vitalsRow}>
-
         <VitalCard
           data={bloodPressure}
           defaultName="Blood Pressure"
@@ -187,15 +185,12 @@ const DailyHealthTrackingScreen = () => {
           defaultName="Mood"
           defaultIcon="emoticon-outline"
         />
-
       </View>
-
 
       {/* CHART */}
 
       <Card style={styles.chartCard}>
         <Card.Content>
-
           <View style={styles.legend}>
             <Text style={styles.legendItem}>🔴 Systolic BP</Text>
             <Text style={styles.legendItem}>🔵 Blood Sugar</Text>
@@ -204,18 +199,24 @@ const DailyHealthTrackingScreen = () => {
 
           <LineChart
             data={{
-              labels: chartDates.map(date => formatShortDate(date)),
+              labels: chartDates.map((date) => formatShortDate(date)),
               datasets: [
                 {
-                  data: systolicData, color: () => "#FF4D5A", strokeWidth: 2
+                  data: systolicData,
+                  color: () => "#FF4D5A",
+                  strokeWidth: 2,
                 },
                 {
-                  data: bloodSugarData, color: () => "#2679FF", strokeWidth: 2
+                  data: bloodSugarData,
+                  color: () => "#2679FF",
+                  strokeWidth: 2,
                 },
                 {
-                  data: moodData, color: () => "#8146FF", strokeWidth: 2
-                }
-              ]
+                  data: moodData,
+                  color: () => "#8146FF",
+                  strokeWidth: 2,
+                },
+              ],
             }}
             width={screenWidth - 35}
             height={260}
@@ -226,27 +227,30 @@ const DailyHealthTrackingScreen = () => {
               color: () => "#555555",
               labelColor: () => "#777777",
               propsForDots: { r: "4" },
-              propsForBackgroundLines: { strokeDasharray: "" }
+              propsForBackgroundLines: {
+                strokeDasharray: "",
+              },
             }}
             bezier
             fromZero={false}
             style={styles.chart}
           />
-
         </Card.Content>
       </Card>
 
-
       {/* DATE SELECTOR */}
 
-      <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.dateScroll}>
-
-        {dates.map(date => (
+      <ScrollView
+        horizontal
+        showsHorizontalScrollIndicator={false}
+        style={styles.dateScroll}
+      >
+        {dates.map((date) => (
           <Card
             key={date}
             style={[
               styles.dateCard,
-              selectedDate === date && styles.selectedDateCard
+              selectedDate === date && styles.selectedDateCard,
             ]}
             onPress={() => setSelectedDate(date)}
           >
@@ -254,7 +258,7 @@ const DailyHealthTrackingScreen = () => {
               <Text
                 style={[
                   styles.dateText,
-                  selectedDate === date && styles.selectedDateText
+                  selectedDate === date && styles.selectedDateText,
                 ]}
               >
                 {formatShortDate(date)}
@@ -262,24 +266,19 @@ const DailyHealthTrackingScreen = () => {
             </Card.Content>
           </Card>
         ))}
-
       </ScrollView>
-
 
       {/* DETAILS */}
 
       <Card style={styles.detailsCard}>
         <Card.Content>
-
           <Text style={styles.detailsTitle}>
             Details for {formatFullDate(selectedDate)}
           </Text>
 
-
           {/* VITAL DETAILS */}
 
           <View style={styles.detailVitals}>
-
             <DetailVital
               data={bloodPressure}
               defaultName="Blood Pressure"
@@ -297,15 +296,13 @@ const DailyHealthTrackingScreen = () => {
               defaultName="Mood"
               defaultIcon="emoticon-outline"
             />
-
           </View>
-
 
           {/* HEALTH RECORDS */}
 
           <Text style={styles.sectionTitle}>Health Records</Text>
 
-          {selectedDayData.map(item => (
+          {selectedDayData.map((item) => (
             <HealthRow
               key={item.id}
               icon={item.icon || "heart-outline"}
@@ -314,16 +311,13 @@ const DailyHealthTrackingScreen = () => {
               dateTime={item.dateTime}
             />
           ))}
-
         </Card.Content>
       </Card>
 
       <View style={{ height: 40 }} />
-
     </ScrollView>
   );
 };
-
 
 // =====================================================
 // VITAL CARD
@@ -333,7 +327,6 @@ const VitalCard = ({ data, defaultName, defaultIcon }) => {
   return (
     <Card style={styles.vitalCard}>
       <Card.Content>
-
         <View style={styles.vitalIconContainer}>
           <IconButton
             icon={data?.icon || defaultIcon}
@@ -351,14 +344,12 @@ const VitalCard = ({ data, defaultName, defaultIcon }) => {
         </Text>
 
         <Text style={styles.vitalUnit}>
-          {getUnit(data?.name)}
+          {getUnit(data?.name || defaultName)}
         </Text>
-
       </Card.Content>
     </Card>
   );
 };
-
 
 // =====================================================
 // DETAIL VITAL
@@ -367,7 +358,6 @@ const VitalCard = ({ data, defaultName, defaultIcon }) => {
 const DetailVital = ({ data, defaultName, defaultIcon }) => {
   return (
     <View style={styles.detailVital}>
-
       <IconButton
         icon={data?.icon || defaultIcon}
         size={20}
@@ -384,13 +374,11 @@ const DetailVital = ({ data, defaultName, defaultIcon }) => {
       </Text>
 
       <Text style={styles.detailVitalUnit}>
-        {getUnit(data?.name)}
+        {getUnit(data?.name || defaultName)}
       </Text>
-
     </View>
   );
 };
-
 
 // =====================================================
 // HEALTH ROW
@@ -399,9 +387,12 @@ const DetailVital = ({ data, defaultName, defaultIcon }) => {
 const HealthRow = ({ icon, name, value, dateTime }) => {
   return (
     <Surface style={styles.healthRow} elevation={0}>
-
       <View style={styles.rowIcon}>
-        <IconButton icon={icon} size={23} iconColor="#4E5EFF" />
+        <IconButton
+          icon={icon}
+          size={23}
+          iconColor="#4E5EFF"
+        />
       </View>
 
       <View style={styles.rowMiddle}>
@@ -410,63 +401,125 @@ const HealthRow = ({ icon, name, value, dateTime }) => {
       </View>
 
       <Text style={styles.rowValue}>{value}</Text>
-
       <Text style={styles.rowArrow}>›</Text>
-
     </Surface>
   );
 };
 
+// =====================================================
+// SAMPLE DATA GENERATOR
+// =====================================================
+
+const createSampleHealthData = () => {
+  const records = [];
+
+  const sampleValues = [
+    { bloodPressure: "118/76", bloodSugar: "92", mood: "4" },
+    { bloodPressure: "120/78", bloodSugar: "95", mood: "3" },
+    { bloodPressure: "117/75", bloodSugar: "89", mood: "4" },
+    { bloodPressure: "121/79", bloodSugar: "98", mood: "5" },
+    { bloodPressure: "119/77", bloodSugar: "94", mood: "4" },
+    { bloodPressure: "116/74", bloodSugar: "91", mood: "3" },
+    { bloodPressure: "122/80", bloodSugar: "97", mood: "4" },
+    { bloodPressure: "118/76", bloodSugar: "93", mood: "5" },
+    { bloodPressure: "120/77", bloodSugar: "96", mood: "4" },
+    { bloodPressure: "117/75", bloodSugar: "90", mood: "3" },
+    { bloodPressure: "119/78", bloodSugar: "94", mood: "4" },
+    { bloodPressure: "121/79", bloodSugar: "99", mood: "4" },
+    { bloodPressure: "118/76", bloodSugar: "92", mood: "5" },
+    { bloodPressure: "120/78", bloodSugar: "95", mood: "4" },
+  ];
+
+  sampleValues.forEach((values, index) => {
+    const date = new Date();
+
+    date.setDate(date.getDate() - (sampleValues.length - 1 - index));
+    date.setHours(12, 0, 0, 0);
+
+    const dateTime = date.toISOString();
+
+    records.push(
+      {
+        id: `sample-bp-${index}`,
+        userID: "demo-user",
+        name: "Blood Pressure",
+        vitals: values.bloodPressure,
+        icon: "heart-outline",
+        dateTime,
+      },
+      {
+        id: `sample-sugar-${index}`,
+        userID: "demo-user",
+        name: "Blood Sugar",
+        vitals: values.bloodSugar,
+        icon: "water",
+        dateTime,
+      },
+      {
+        id: `sample-mood-${index}`,
+        userID: "demo-user",
+        name: "Mood",
+        vitals: values.mood,
+        icon: "emoticon-outline",
+        dateTime,
+      }
+    );
+  });
+
+  return records.sort(
+    (a, b) => new Date(a.dateTime) - new Date(b.dateTime)
+  );
+};
 
 // =====================================================
 // HELPER FUNCTIONS
 // =====================================================
 
-const getDateOnly = dateTime => {
-  const date = new Date(dateTime);
-  return date.toISOString().split("T")[0];
+const getDateOnly = (dateTime) => {
+  return new Date(dateTime).toISOString().split("T")[0];
 };
 
-
-const formatShortDate = dateString => {
+const formatShortDate = (dateString) => {
   const date = new Date(dateString);
 
   return date.toLocaleDateString("en-US", {
-    month: "short", day: "numeric"
+    month: "short",
+    day: "numeric",
   });
 };
 
-
-const formatFullDate = dateString => {
+const formatFullDate = (dateString) => {
   const date = new Date(dateString);
 
   return date.toLocaleDateString("en-US", {
-    month: "short", day: "numeric", year: "numeric"
+    month: "short",
+    day: "numeric",
+    year: "numeric",
   });
 };
 
-
-const formatTime = dateTime => {
+const formatTime = (dateTime) => {
   const date = new Date(dateTime);
 
   return date.toLocaleTimeString("en-US", {
-    hour: "numeric", minute: "2-digit"
+    hour: "numeric",
+    minute: "2-digit",
   });
 };
 
-
-const getNumber = value => {
+const getNumber = (value) => {
   if (typeof value === "number") {
     return value;
   }
 
-  const number = parseFloat(String(value).replace(/[^\d.]/g, ""));
+  const number = parseFloat(
+    String(value).replace(/[^\d.]/g, "")
+  );
 
   return isNaN(number) ? 0 : number;
 };
 
-
-const getSystolic = value => {
+const getSystolic = (value) => {
   if (!value) {
     return 0;
   }
@@ -476,8 +529,7 @@ const getSystolic = value => {
   return parseFloat(systolic) || 0;
 };
 
-
-const getUnit = name => {
+const getUnit = (name) => {
   if (!name) {
     return "";
   }
@@ -499,181 +551,276 @@ const getUnit = name => {
   return "";
 };
 
-
 // =====================================================
 // STYLES
 // =====================================================
 
 const styles = StyleSheet.create({
-
   container: {
-    flex: 1, backgroundColor: "#F8F9FD", paddingHorizontal: 12
+    flex: 1,
+    backgroundColor: "#F8F9FD",
+    paddingHorizontal: 12,
   },
 
   header: {
-    flexDirection: "row", alignItems: "center", marginTop: 15, marginBottom: 15
+    flexDirection: "row",
+    alignItems: "center",
+    marginTop: 15,
+    marginBottom: 15,
   },
 
   headerText: {
-    flex: 1
+    flex: 1,
   },
 
   title: {
-    fontSize: 24, fontWeight: "700", color: "#10132B"
+    fontSize: 24,
+    fontWeight: "700",
+    color: "#10132B",
   },
 
   subtitle: {
-    fontSize: 12, color: "#777", marginTop: 2
+    fontSize: 12,
+    color: "#777",
+    marginTop: 2,
+  },
+
+  demoLabel: {
+    fontSize: 9,
+    fontWeight: "700",
+    color: "#5964FF",
+    marginTop: 5,
   },
 
   periodButton: {
-    flexDirection: "row", alignItems: "center", gap: 5, backgroundColor: "#EEF1FF", paddingHorizontal: 12, paddingVertical: 9, borderRadius: 20
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 5,
+    backgroundColor: "#EEF1FF",
+    paddingHorizontal: 12,
+    paddingVertical: 9,
+    borderRadius: 20,
   },
 
   periodText: {
-    fontSize: 12, color: "#25294A"
+    fontSize: 12,
+    color: "#25294A",
   },
 
   vitalsRow: {
-    flexDirection: "row", gap: 7, marginBottom: 12
+    flexDirection: "row",
+    gap: 7,
+    marginBottom: 12,
   },
 
   vitalCard: {
-    flex: 1, borderRadius: 15, backgroundColor: "#FFFFFF", elevation: 0
+    flex: 1,
+    borderRadius: 15,
+    backgroundColor: "#FFFFFF",
+    elevation: 0,
   },
 
   vitalIconContainer: {
-    width: 35, height: 35, borderRadius: 20, backgroundColor: "#EEF0FF", alignItems: "center", justifyContent: "center", marginBottom: 3
+    width: 35,
+    height: 35,
+    borderRadius: 20,
+    backgroundColor: "#EEF0FF",
+    alignItems: "center",
+    justifyContent: "center",
+    marginBottom: 3,
   },
 
   vitalLabel: {
-    fontSize: 10, color: "#555", marginTop: 2
+    fontSize: 10,
+    color: "#555",
+    marginTop: 2,
   },
 
   vitalValue: {
-    fontSize: 17, fontWeight: "700", color: "#11152E", marginTop: 4
+    fontSize: 17,
+    fontWeight: "700",
+    color: "#11152E",
+    marginTop: 4,
   },
 
   vitalUnit: {
-    fontSize: 9, color: "#888"
+    fontSize: 9,
+    color: "#888",
   },
 
   chartCard: {
-    borderRadius: 18, backgroundColor: "#FFFFFF", elevation: 0, marginBottom: 12, overflow: "hidden"
+    borderRadius: 18,
+    backgroundColor: "#FFFFFF",
+    elevation: 0,
+    marginBottom: 12,
+    overflow: "hidden",
   },
 
   legend: {
-    flexDirection: "row", justifyContent: "space-around", marginBottom: 5
+    flexDirection: "row",
+    justifyContent: "space-around",
+    marginBottom: 5,
   },
 
   legendItem: {
-    fontSize: 9, color: "#666"
+    fontSize: 9,
+    color: "#666",
   },
 
   chart: {
-    marginLeft: -15, borderRadius: 15
+    marginLeft: -15,
+    borderRadius: 15,
   },
 
   dateScroll: {
-    marginBottom: 12
+    marginBottom: 12,
   },
 
   dateCard: {
-    marginRight: 7, borderRadius: 15, backgroundColor: "#FFFFFF", elevation: 0
+    marginRight: 7,
+    borderRadius: 15,
+    backgroundColor: "#FFFFFF",
+    elevation: 0,
   },
 
   selectedDateCard: {
-    backgroundColor: "#536DFE"
+    backgroundColor: "#536DFE",
   },
 
   dateText: {
-    fontSize: 11, color: "#444"
+    fontSize: 11,
+    color: "#444",
   },
 
   selectedDateText: {
-    color: "#FFFFFF", fontWeight: "700"
+    color: "#FFFFFF",
+    fontWeight: "700",
   },
 
   detailsCard: {
-    borderRadius: 20, backgroundColor: "#FFFFFF", elevation: 0, marginBottom: 20
+    borderRadius: 20,
+    backgroundColor: "#FFFFFF",
+    elevation: 0,
+    marginBottom: 20,
   },
 
   detailsTitle: {
-    fontSize: 17, fontWeight: "700", color: "#151832", marginBottom: 15
+    fontSize: 17,
+    fontWeight: "700",
+    color: "#151832",
+    marginBottom: 15,
   },
 
   detailVitals: {
-    flexDirection: "row", gap: 7, marginBottom: 18
+    flexDirection: "row",
+    gap: 7,
+    marginBottom: 18,
   },
 
   detailVital: {
-    flex: 1, backgroundColor: "#F7F8FC", borderRadius: 13, padding: 8
+    flex: 1,
+    backgroundColor: "#F7F8FC",
+    borderRadius: 13,
+    padding: 8,
   },
 
   detailVitalName: {
-    fontSize: 9, color: "#666"
+    fontSize: 9,
+    color: "#666",
   },
 
   detailVitalValue: {
-    fontSize: 15, fontWeight: "700", marginTop: 4, color: "#151832"
+    fontSize: 15,
+    fontWeight: "700",
+    marginTop: 4,
+    color: "#151832",
   },
 
   detailVitalUnit: {
-    fontSize: 9, color: "#888"
+    fontSize: 9,
+    color: "#888",
   },
 
   sectionTitle: {
-    fontSize: 15, fontWeight: "700", marginBottom: 8, color: "#151832"
+    fontSize: 15,
+    fontWeight: "700",
+    marginBottom: 8,
+    color: "#151832",
   },
 
   healthRow: {
-    flexDirection: "row", alignItems: "center", borderWidth: 1, borderColor: "#EEEEF4", borderRadius: 12, paddingVertical: 4, paddingHorizontal: 5, marginBottom: 7, backgroundColor: "#FFFFFF"
+    flexDirection: "row",
+    alignItems: "center",
+    borderWidth: 1,
+    borderColor: "#EEEEF4",
+    borderRadius: 12,
+    paddingVertical: 4,
+    paddingHorizontal: 5,
+    marginBottom: 7,
+    backgroundColor: "#FFFFFF",
   },
 
   rowIcon: {
-    width: 40, alignItems: "center"
+    width: 40,
+    alignItems: "center",
   },
 
   rowMiddle: {
-    flex: 1
+    flex: 1,
   },
 
   rowName: {
-    fontSize: 13, fontWeight: "600", color: "#1B1E39"
+    fontSize: 13,
+    fontWeight: "600",
+    color: "#1B1E39",
   },
 
   rowDate: {
-    fontSize: 10, color: "#888", marginTop: 2
+    fontSize: 10,
+    color: "#888",
+    marginTop: 2,
   },
 
   rowValue: {
-    fontSize: 12, fontWeight: "600", color: "#25294A", marginRight: 5
+    fontSize: 12,
+    fontWeight: "600",
+    color: "#25294A",
+    marginRight: 5,
   },
 
   rowArrow: {
-    fontSize: 23, color: "#888"
+    fontSize: 23,
+    color: "#888",
   },
 
   loadingContainer: {
-    flex: 1, justifyContent: "center", alignItems: "center", gap: 10
+    flex: 1,
+    justifyContent: "center",
+    alignItems: "center",
+    gap: 10,
   },
 
   loadingText: {
-    color: "#777"
+    color: "#777",
   },
 
   emptyContainer: {
-    flex: 1, justifyContent: "center", alignItems: "center", padding: 30
+    flex: 1,
+    justifyContent: "center",
+    alignItems: "center",
+    padding: 30,
   },
 
   emptyTitle: {
-    fontSize: 22, fontWeight: "700", marginBottom: 8
+    fontSize: 22,
+    fontWeight: "700",
+    marginBottom: 8,
   },
 
   emptyText: {
-    textAlign: "center", color: "#777"
-  }
-
+    textAlign: "center",
+    color: "#777",
+  },
 });
 
 export default DailyHealthTrackingScreen;
