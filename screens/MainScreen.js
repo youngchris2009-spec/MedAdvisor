@@ -223,15 +223,13 @@ const overview = [
     background: '#EEF3FF',
   },
   {
-      title: 'Vitals',
-      value: 'Good',
-      subtitle: '',
-      icon: 'heart',
-      iconColor: '#8035A1',
-      background: '#EDD7F7',
-      route: 'Health Trends',
-      trends: true,
-  
+  title: 'Vitals',
+  value: 'Good',
+  subtitle: '',
+  icon: 'heart',
+  iconColor: '#8035A1',
+  background: '#EDD7F7',
+  route: 'Daily Health Track',
 },
 ];
 
@@ -247,11 +245,17 @@ const OverviewCard = ({ item }) => (
       <IconButton icon={item.icon} iconColor={item.iconColor} size={17} style={styles.iconButton} />
     </View>
 
-    {item.viewAll && (
+    <Text style={styles.overviewTitle}>{item.title}</Text>
+    <Text style={[styles.overviewValue, { color: item.iconColor }]}>{item.value}</Text>
+
+    <View style={styles.overviewBottomRow}>
+      <Text style={styles.overviewSubtitle}>{item.subtitle}</Text>
+
+      {item.viewAll && (
   <View style={styles.overviewViewAll}>
 
     <TouchableOpacity
-      onPress={() => navigation.navigate('Prescript Scan')}
+      onPress={() => navigation.navigate('Add Medication')}
     >
       <Text style={styles.overviewAdd}>+ Add</Text>
     </TouchableOpacity>
@@ -264,26 +268,6 @@ const OverviewCard = ({ item }) => (
 
   </View>
 )}
-
-  {item.trends && (
-    <View style={styles.overviewViewAll}>
-  <TouchableOpacity
-  onPress={() => navigation.navigate("Health Trends")}
-  >
-    <Text style={styles.overviewViewAll}>View Trends</Text>
-  </TouchableOpacity>
-  </View>
-  )}
-
-
-    <Text style={styles.overviewTitle}>{item.title}</Text>
-    <Text style={[styles.overviewValue, { color: item.iconColor }]}>{item.value}</Text>
-
-    <View style={styles.overviewBottomRow}>
-      <Text style={styles.overviewSubtitle}>{item.subtitle}</Text>
-      
-      
-      
     </View>
   </View>
 );
@@ -498,7 +482,7 @@ const OverviewCard = ({ item }) => (
         </View>
 
         <View style={{ flex: 1 }}>
-          <Text style={styles.healthStatusTitle}>Health Habit Status</Text>
+          <Text style={styles.healthStatusTitle}>Health Status</Text>
           <Text style={styles.healthStatusGood}>Good</Text>
           <Text style={styles.healthStatusText}>You're doing great! Keep it up.</Text>
         </View>
@@ -516,17 +500,7 @@ const OverviewCard = ({ item }) => (
 </TouchableOpacity>
 
       {/* AI INSIGHTS */}
-      <View style={styles.sectionHeader}>
-  <Text style={styles.sectionTitle}>AI Insights</Text>
-
-    <Button
-      mode="text"
-      compact
-      onPress={() => navigation.navigate('Health Recommendation')}
-    >
-      Recommendations
-    </Button>
-  </View>
+      <Text style={styles.sectionTitle}>AI Insights</Text>
 
       {insights.map((insight, index) => (
         <View key={index} style={[styles.insightCard, { backgroundColor: insight.background }]}>
@@ -554,8 +528,6 @@ export default MainScreen;
 const styles = StyleSheet.create({
   loadingContainer: { flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: '#FFFFFF' },
   loadingText: { marginTop: 15, fontSize: 14, color: '#69758A' },
-
-  sectionHeader: {flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginTop: 20,},
 
   errorContainer: { flex: 1, justifyContent: 'center', alignItems: 'center', padding: 30, backgroundColor: '#FFFFFF' },
   errorTitle: { fontSize: 20, fontWeight: '700', color: '#24324B', marginBottom: 10 },
