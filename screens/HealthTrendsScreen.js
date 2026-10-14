@@ -1,5 +1,5 @@
 
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useEffect, useLayoutEffect, useMemo, useState } from 'react';
 import {View,
   StyleSheet,
   ScrollView,
@@ -21,12 +21,20 @@ const screenWidth = Dimensions.get("window").width;
 // MAIN SCREEN
 // =====================================================
 
-const HealthTrendScreen = () => {
+const HealthTrendScreen = ({ navigation }) => {
   const [healthData, setHealthData] = useState([]);
   const [selectedDate, setSelectedDate] = useState(null);
   const [loading, setLoading] = useState(true);
 
-  
+  useLayoutEffect(() => {
+    navigation.setOptions({
+        headerRight: () => (
+            <View style={styles.periodButton}>
+                <Text style={styles.periodText}>14 Days</Text>
+            </View>
+        ),
+    });
+}, [navigation]);
   // Load fictional sample data
   useEffect(() => {
     const sampleData = createSampleHealthData();
@@ -158,29 +166,7 @@ const HealthTrendScreen = () => {
       style={styles.container}
       showsVerticalScrollIndicator={false}
     >
-      {/* HEADER */}
-
-      <View style={styles.header}>
-        <IconButton
-          icon="arrow-left"
-          size={25}
-          iconColor="#202344"
-        />
-
-        <View style={styles.headerText}>
-          <Text style={styles.title}>Health Tracking</Text>
-          <Text style={styles.subtitle}>
-            Track your vitals and daily habits
-          </Text>
-          <Text style={styles.demoLabel}>
-            DEMO DATA · FICTIONAL EXAMPLE
-          </Text>
-        </View>
-
-        <View style={styles.periodButton}>
-          <Text style={styles.periodText}>14 Days</Text>
-        </View>
-      </View>
+      
 
       {/* VITAL CARDS */}
 
@@ -226,9 +212,11 @@ const HealthTrendScreen = () => {
 
           <LineChart
             data={{
-              labels: chartDates.map((date) =>
-                formatShortDate(date)
-              ),
+              labels: chartDates.map((date, index) =>
+                index % 3 === 0 || index === chartDates.length - 1
+                    ? formatShortDate(date)
+                    : ''
+                    ),
               datasets: [
                 {
                   data: systolicData,
