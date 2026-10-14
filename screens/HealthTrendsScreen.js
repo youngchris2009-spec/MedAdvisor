@@ -21,7 +21,7 @@ const screenWidth = Dimensions.get("window").width;
 // MAIN SCREEN
 // =====================================================
 
-const DailyHealthTrackingScreen = () => {
+const HealthTrendScreen = () => {
   const [healthData, setHealthData] = useState([]);
   const [selectedDate, setSelectedDate] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -935,4 +935,4 @@ const styles = StyleSheet.create({
   },
 });
 
-export default DailyHealthTrackingScreen;
+export default HealthTrendScreen;
