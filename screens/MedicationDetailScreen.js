@@ -51,8 +51,9 @@ const MedicationDetailScreen = ({ route, navigation }) => {
     const [sideEffect, setSideEffect] =
         useState(medication?.sideEffect || []);
 
-    const [time, setTime] =
-        useState(medication?.time || []);
+const [time, setTime] = useState(
+    medication?.time?.length ? medication.time : ['9:00 PM']
+);
 
     const [startDate, setStartDate] =
         useState(medication?.startDate || '');
@@ -90,7 +91,7 @@ const MedicationDetailScreen = ({ route, navigation }) => {
 
         setSaving(true);
 
-        const userID = '12345';
+        const userID = 'YIuwbxGpb1OMWnNzOGiJgJsA1Fr1';
 
         await addDoc(
             collection(db, 'medication'),
