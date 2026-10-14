@@ -1,9 +1,19 @@
-import { StyleSheet, View, FlatList, ScrollView, TextInput, Pressable } from 'react-native'
-import { Text, Button, Card, LeftContent, Divider, Icon } from 'react-native-paper'
-import React, { useState, useEffect } from 'react'
-import { experimentalSetDeliveryMetricsExportedToBigQueryEnabled } from 'firebase/messaging/sw';
-import { doc, setDoc, collection, query, where, getDocs, orderBy, Timestamp } from 'firebase/firestore';
+
+import React, { useState, useEffect } from 'react';
+import { StyleSheet, View, ScrollView, TextInput, Pressable, Alert } from 'react-native';
+import { Text, Button, Card, Divider, Icon } from 'react-native-paper';
+import { doc, setDoc, collection, query, where, getDocs, orderBy } from 'firebase/firestore';
 import { db } from '../firebase';
+
+const USER_ID = '12345';
+
+const MOODS = [
+    { icon: 'emoticon-frown', color: 'red', label: 'Very Bad' },
+    { icon: 'emoticon-sad', color: 'orange', label: 'Bad' },
+    { icon: 'emoticon-neutral', color: 'gold', label: 'Okay' },
+    { icon: 'emoticon-happy', color: 'yellowgreen', label: 'Good' },
+    { icon: 'emoticon', color: 'limegreen', label: 'Great' }
+];
 
 const DailyHealthTrackScreen = () => {
 
@@ -11,823 +21,455 @@ const DailyHealthTrackScreen = () => {
     const [bloodPressure, setBloodPressure] = useState('');
     const [bloodSugar, setBloodSugar] = useState('');
     const [heartRate, setHeartRate] = useState('');
-    const [foodName, setFoodName] = useState('');
-    const [foodCalories, setFoodCalories] = useState('');
-    const [foodMeal, setFoodMeal] = useState('');
-    const [foodEntries, setFoodEntries] = useState([]);
 
     const [exercise, setExercise] = useState('');
     const [sleep, setSleep] = useState('');
-    const [waterIntake, setWaterIntake] = useState([false, false, false, false, false, false, false, false]);
+    const [waterIntake, setWaterIntake] = useState(Array(8).fill(false));
     const [selectedMood, setSelectedMood] = useState(null);
     const [notes, setNotes] = useState('');
+    const [saving, setSaving] = useState(false);
 
     const vitals = [
-    { name: 'Weight: ', vitals: weight, unit: 'lbs', icon: 'scale-bathroom', color: 'navy', setValue: setWeight },
-    { name: 'Blood Pressure: ', vitals: bloodPressure, unit: 'mmHg', icon: 'gauge', color: 'orange', setValue: setBloodPressure },
-    { name: 'Blood Sugar: ', vitals: bloodSugar, unit: ' mg/dL', icon: 'water', color: 'red', setValue: setBloodSugar },
-    { name: 'Heart Rate: ', vitals: heartRate, unit: 'bpm', icon: 'heart', color: 'red', setValue: setHeartRate }
-    ]
-    const mood = [{ icon: 'emoticon-frown', color: 'red', label: 'Very Bad' },
-    { icon: 'emoticon-sad', color: 'orange', label: 'Bad' },
-    { icon: 'emoticon-neutral', color: 'gold', label: 'Okay' },
-    { icon: 'emoticon-happy', color: 'yellowgreen', label: 'Good' },
-    { icon: 'emoticon', color: 'limegreen', label: 'Great' }
-    ]
-    const waterCups = Array.from({ length: 8 });
+        { name: 'Weight', value: weight, unit: 'lbs', icon: 'scale-bathroom', color: 'navy', setValue: setWeight },
+        { name: 'Blood Pressure', value: bloodPressure, unit: 'mmHg', icon: 'gauge', color: 'orange', setValue: setBloodPressure },
+        { name: 'Blood Sugar', value: bloodSugar, unit: 'mg/dL', icon: 'water', color: 'red', setValue: setBloodSugar },
+        { name: 'Heart Rate', value: heartRate, unit: 'bpm', icon: 'heart', color: 'red', setValue: setHeartRate }
+    ];
 
     useEffect(() => {
-        loadTodayHealthData()
-    }, [])
+        loadTodayHealthData();
+    }, []);
+
+    // -----------------------------------
+    // Load Today's Health Data
+    // -----------------------------------
 
     const loadTodayHealthData = async () => {
-
         try {
+            const startOfToday = new Date();
+            startOfToday.setHours(0, 0, 0, 0);
 
-            const userID = '12345'
-            // replace with logged-in user ID
+            const startOfTomorrow = new Date(startOfToday);
+            startOfTomorrow.setDate(startOfTomorrow.getDate() + 1);
 
-            // Start of today
-            const startOfToday = new Date()
-
-            startOfToday.setHours(
-                0,
-                0,
-                0,
-                0
-            )
-
-            // Start of tomorrow
-            const startOfTomorrow = new Date(startOfToday)
-
-            startOfTomorrow.setDate(
-                startOfTomorrow.getDate() + 1
-            )
-
-
+            // dateTime is stored as an ISO string.
             const q = query(
-                collection(
-                    db,
-                    'dailyHealthTracking'
-                ),
+                collection(db, 'dailyHealthTracking'),
+                where('userID', '==', USER_ID),
+                where('dateTime', '>=', startOfToday.toISOString()),
+                where('dateTime', '<', startOfTomorrow.toISOString()),
+                orderBy('dateTime', 'desc')
+            );
 
-                where(
-                    'userID',
-                    '==',
-                    userID
-                ),
+            const snapshot = await getDocs(q);
+            const latest = {};
 
-                where(
-                    'dateTime',
-                    '>=',
-                    Timestamp.fromDate(startOfToday)
-                ),
+            snapshot.forEach(snapshotDoc => {
+                const data = snapshotDoc.data();
+                if (!latest[data.name]) latest[data.name] = data;
+            });
 
-                where(
-                    'dateTime',
-                    '<',
-                    Timestamp.fromDate(startOfTomorrow)
-                ),
+            setWeight(String(latest['Weight']?.vitals ?? ''));
+            setBloodPressure(String(latest['Blood Pressure']?.vitals ?? ''));
+            setBloodSugar(String(latest['Blood Sugar']?.vitals ?? ''));
+            setHeartRate(String(latest['Heart Rate']?.vitals ?? ''));
 
-                orderBy(
-                    'dateTime',
-                    'desc'
-                )
-            )
+            const savedMood = latest['Mood']?.vitals;
+            const moodIndex = MOODS.findIndex(item => item.label === savedMood);
+            const numericMood = Number(savedMood);
 
+            setSelectedMood(
+                moodIndex >= 0 ? moodIndex :
+                savedMood !== undefined && savedMood !== null && savedMood !== '' &&
+                Number.isInteger(numericMood) && numericMood >= 0 && numericMood < MOODS.length
+                    ? numericMood : null
+            );
 
-            const snapshot =
-                await getDocs(q)
+            setNotes(String(latest['Notes']?.vitals ?? ''));
 
+            // Load habit data saved in healthHabitRecommendation.
+            const habitsQuery = query(
+                collection(db, 'healthHabitRecommendation'),
+                where('userID', '==', USER_ID)
+            );
 
-            // Blank if nothing exists today
-            if (snapshot.empty) {
+            const habitSnapshot = await getDocs(habitsQuery);
+            const latestHabits = {};
 
-                setWeight('')
-                setBloodPressure('')
-                setBloodSugar('')
-                setHeartRate('')
-                setSelectedMood(null)
+            habitSnapshot.forEach(snapshotDoc => {
+                const data = snapshotDoc.data();
+                const entry = data.dailyHabitTraking;
+                const date = entry?.dateTime;
 
-                return
-            }
+                if (!date || date < startOfToday.toISOString() || date >= startOfTomorrow.toISOString()) return;
 
-
-            const latest = {}
-
-
-            snapshot.forEach(doc => {
-
-                const data = doc.data()
-
-                // Because query is newest -> oldest,
-                // only keep first occurrence of each name
-                if (!latest[data.name]) {
-
-                    latest[data.name] = data
-
+                if (!latestHabits[data.name] || date > latestHabits[data.name].dateTime) {
+                    latestHabits[data.name] = entry;
                 }
+            });
 
-            })
+            setExercise(String(latestHabits['Exercise']?.amount ?? ''));
+            setSleep(String(latestHabits['Sleep']?.amount ?? ''));
 
+            const cups = Math.min(8, Math.max(0, Number(latestHabits['Water']?.amount) || 0));
+            setWaterIntake(Array.from({ length: 8 }, (_, index) => index < cups));
 
-            // -------------------------
-            // VITALS
-            // -------------------------
-
-            if (latest['Weight']) {
-
-                setWeight(
-                    latest['Weight'].vitals?.toString() || ''
-                )
-
-            }
-
-
-            if (latest['Blood Pressure']) {
-
-                setBloodPressure(
-                    latest['Blood Pressure'].vitals?.toString() || ''
-                )
-
-            }
-
-
-            if (latest['Blood Sugar']) {
-
-                setBloodSugar(
-                    latest['Blood Sugar'].vitals?.toString() || ''
-                )
-
-            }
-
-
-            if (latest['Heart Rate']) {
-
-                setHeartRate(
-                    latest['Heart Rate'].vitals?.toString() || ''
-                )
-
-            }
-
-
-            // -------------------------
-            // MOOD
-            // -------------------------
-
-            if (latest['Mood']) {
-
-                const moodLabel =
-                    latest['Mood'].vitals
-
-                const moodIndex =
-                    mood.findIndex(
-                        item =>
-                            item.label === moodLabel
-                    )
-
-                if (moodIndex !== -1) {
-
-                    setSelectedMood(moodIndex)
-
-                }
-
-            }
-            if (latest['Notes']) {
-                setNotes(
-                    latest['Notes'].vitals?.toString() || ''
-                );
-            }
-
+        } catch (error) {
+            console.log('Error loading health data:', error);
         }
-        catch (error) {
+    };
 
-            console.log(
-                'Error loading health data:',
-                error
-            )
-
-        }
-
-    }
-
+    // -----------------------------------
+    // Save Health Data
+    // -----------------------------------
 
     const save = async () => {
         try {
-            const userID = '12345'; // Replace this with the actual logged-in user's ID
+            setSaving(true);
+
             const dateTime = new Date().toISOString();
 
-            // =========================
-            // DAILY HEALTH TRACKING
-            // VITALS
-            // =========================
-
             const healthTracking = [
-                {
-                    name: 'Weight',
-                    vitals: weight,
-                    icon: 'scale-bathroom'
-                },
-                {
-                    name: 'Blood Pressure',
-                    vitals: bloodPressure,
-                    icon: 'gauge'
-                },
-                {
-                    name: 'Blood Sugar',
-                    vitals: bloodSugar,
-                    icon: 'water'
-                },
-                {
-                    name: 'Heart Rate',
-                    vitals: heartRate,
-                    icon: 'heart'
-                },
-                {
-                    name: 'Mood',
-                    vitals: selectedMood,
-                    icon: mood[selectedMood].icon
-                },
-                {
-                    name: 'Notes',
-                    vitals: notes,
-                    icon: 'note-text'
-                }
+                { name: 'Weight', vitals: weight, icon: 'scale-bathroom' },
+                { name: 'Blood Pressure', vitals: bloodPressure, icon: 'gauge' },
+                { name: 'Blood Sugar', vitals: bloodSugar, icon: 'water' },
+                { name: 'Heart Rate', vitals: heartRate, icon: 'heart' },
+                { name: 'Notes', vitals: notes, icon: 'note-text' }
             ];
 
-            for (const item of healthTracking) {
-                const docID = `${userID}_${item.name}_${dateTime}`;
-
-                await setDoc(
-                    doc(db, 'dailyHealthTracking', docID),
-                    {
-                        userID: userID,
-                        name: item.name,
-                        vitals: item.vitals,
-                        dateTime: dateTime,
-                        icon: item.icon
-                    }
-                );
+            if (selectedMood !== null) {
+                healthTracking.push({
+                    name: 'Mood',
+                    vitals: selectedMood,
+                    icon: MOODS[selectedMood].icon
+                });
             }
 
-            // =========================
-            // HEALTH HABIT RECOMMENDATION
-            // WATER
-            // =========================
+            for (const item of healthTracking) {
+                const docID = `${USER_ID}_${item.name}_${dateTime}`;
 
-            const waterAmount = waterIntake.filter(cup => cup).length;
+                await setDoc(doc(db, 'dailyHealthTracking', docID), {
+                    userID: USER_ID,
+                    name: item.name,
+                    vitals: item.vitals,
+                    dateTime,
+                    icon: item.icon
+                });
+            }
+
+            const waterAmount = waterIntake.filter(Boolean).length;
 
             const habits = [
-                {
-                    name: 'Water',
-                    detail: 'Drink water throughout the day',
-                    amount: waterAmount
-                },
-                {
-                    name: 'Exercise',
-                    detail: 'Daily physical activity',
-                    amount: exercise
-                },
-                {
-                    name: 'Sleep',
-                    detail: 'Hours of sleep',
-                    amount: sleep
-                }
+                { name: 'Water', detail: 'Drink water throughout the day', amount: waterAmount },
+                { name: 'Exercise', detail: 'Daily physical activity', amount: exercise },
+                { name: 'Sleep', detail: 'Hours of sleep', amount: sleep }
             ];
 
             for (const habit of habits) {
-                const docID = `${userID}_${habit.name}_${dateTime}`;
+                const docID = `${USER_ID}_${habit.name}_${dateTime}`;
 
-                await setDoc(
-                    doc(db, 'healthHabitRecommendation', docID),
-                    {
-                        userID: userID,
-                        name: habit.name,
-                        detail: habit.detail,
-                        dailyHabitTraking: {
-                            dateTime: dateTime,
-                            amount: habit.amount
-                        }
+                await setDoc(doc(db, 'healthHabitRecommendation', docID), {
+                    userID: USER_ID,
+                    name: habit.name,
+                    detail: habit.detail,
+                    dailyHabitTraking: {
+                        dateTime,
+                        amount: habit.amount
                     }
-                );
+                });
             }
 
-            console.log('Health data saved successfully!');
+            Alert.alert('Success', 'Health data saved successfully!');
 
         } catch (error) {
             console.error('Error saving health data:', error);
+            Alert.alert('Error', 'Unable to save health data.');
+        } finally {
+            setSaving(false);
         }
     };
 
-    const addFoodEntry = () => {
-        if (
-            !foodMeal.trim() ||
-            !foodName.trim() ||
-            foodCalories.trim() === ''
-        ) {
-            return;
-        }
-    
-        const calories = Number(foodCalories);
-    
-        if (!Number.isFinite(calories) || calories < 0) {
-            return;
-        }
-    
-        setFoodEntries(prev => [
-            ...prev,
-            {
-                id: `${Date.now()}-${prev.length}`,
-                meal: foodMeal.trim(),
-                name: foodName.trim(),
-                calories
-            }
-        ]);
-    
-        // Reset all inputs to empty strings
-        setFoodMeal('');
-        setFoodName('');
-        setFoodCalories('');
-    };
+    // -----------------------------------
+    // Render Vitals
+    // -----------------------------------
 
-
-
-    const renderVitalsItem = ({ item }) => (
-        <View style={{ marginVertical: '3' }}>
-            <View style={{
-                flexDirection: 'row', justifyContent: 'space-between', marginVertical: 3
-            }}>
-                <View style={{ flexDirection: 'row', gap: 16, alignItems: 'center' }}>
+    const renderVitalsItem = (item) => (
+        <View key={item.name} style={{ marginVertical: 3 }}>
+            <View style={styles.vitalRow}>
+                <View style={styles.vitalLabel}>
                     <Icon source={item.icon} color={item.color} size={25} />
-                    <Text>{item.name}</Text>
+                    <Text style={styles.vitalName}>{item.name}</Text>
                 </View>
-                <TextInput
-                    value={item.vitals}
-                    onChangeText={item.setValue}
-                    keyboardType={
-                        item.name === 'Blood Pressure: '
-                            ? 'numbers-and-punctuation'
-                            : 'numeric'
-                    }
-                    style={{
-                        width: 100,
-                        textAlign: 'right'
-                    }}
-                />
-                <View>
-                    <Text> {item.unit}</Text>
+
+                <View style={styles.vitalInputGroup}>
+                    <TextInput
+                        value={item.value}
+                        onChangeText={item.setValue}
+                        keyboardType={item.name === 'Blood Pressure' ? 'numbers-and-punctuation' : 'numeric'}
+                        style={styles.vitalInput}
+                        placeholder="--"
+                    />
+                    <Text style={styles.vitalUnit}>{item.unit}</Text>
                 </View>
             </View>
-            <Divider
-                style={{
-                    marginLeft: 40,
-                    marginRight: 10,
-                    opacity: 0.2
-                }}
-            />
-        </View>
-    )
-    const renderMoodItem = ({ item, index }) => (
-        <View style={{
-            alignItems: 'center',
-            flex: 1
-        }}>
-            <Pressable
-                onPress={() => setSelectedMood(index)}
-                style={{
-                    width: 52, height: 52, borderRadius: 26, alignItems: 'center',
-                    justifyContent: 'center', borderWidth: selectedMood === index ? 2 : 0,
-                    borderColor: 'black'
-                }}>
-                <View style={{
-                    width: 46, height: 46, borderRadius: 23, alignItems: 'center',
-                    justifyContent: 'center'
-                }}>
-                    <Icon
-                        source={item.icon}
-                        color={item.color}
-                        size={23}
-                    />
-                </View>
-            </Pressable>
 
-            {selectedMood === index && (
-                <Text style={{
-                    color: 'black',
-                    fontSize: 11,
-                    marginTop: 4,
-                    fontWeight: '500'
-                }}>
-                    {item.label}
-                </Text>
-            )}
+            <Divider style={styles.divider} />
         </View>
-    )
+    );
 
-    const renderWaterIntakeItem = ({ index }) => (
+    // -----------------------------------
+    // Render Mood
+    // -----------------------------------
+
+    const renderMoodItem = (item, index) => (
         <Pressable
+            key={index}
+            onPress={() => setSelectedMood(index)}
+            style={styles.moodItem}
+        >
+            <View style={[
+                styles.moodCircle,
+                selectedMood === index && styles.moodSelected
+            ]}>
+                <Icon source={item.icon} color={item.color} size={25} />
+            </View>
+
+            <Text
+                style={[
+                    styles.moodLabel,
+                    selectedMood === index && styles.moodLabelSelected
+                ]}
+                numberOfLines={1}
+            >
+                {item.label}
+            </Text>
+        </Pressable>
+    );
+
+    // -----------------------------------
+    // Render Water Cups
+    // -----------------------------------
+
+    const renderWaterIntakeItem = (index) => (
+        <Pressable
+            key={index}
             onPress={() => {
                 setWaterIntake(prev => {
-                    const newWater = [...prev];
-                    newWater[index] = !newWater[index];
-                    return newWater;
+                    const updated = [...prev];
+                    updated[index] = !updated[index];
+                    return updated;
                 });
             }}
-            style={{ marginHorizontal: 5 }}
+            style={styles.waterCup}
         >
             <Icon
                 source="cup-water"
                 color={waterIntake[index] ? 'deepskyblue' : 'silver'}
-                size={40}
+                size={32}
             />
         </Pressable>
-    )
+    );
+
+    const waterAmount = waterIntake.filter(Boolean).length;
+
+    // -----------------------------------
+    // Main Screen
+    // -----------------------------------
+
     return (
-        <ScrollView style={{ margin: 15 }}>
+        <ScrollView style={styles.container} contentContainerStyle={styles.content}>
 
-            
+            {/* VITALS */}
+            <Card style={styles.card}>
+                <Card.Title title="Vitals" left={() => <Icon source="heart-pulse" size={25} />} />
 
-            <Card style={{ marginBottom: 13 }}>
-                <Card.Title
-                    title="Vitals"
-                    left={LeftContent}
-                />
                 <Card.Content>
-                    <FlatList
-                        data={vitals}
-                        renderItem={renderVitalsItem}
-                    />
+                    <View>
+                        {vitals.map(renderVitalsItem)}
+                    </View>
                 </Card.Content>
             </Card>
 
-            <Card style={{ marginBottom: 13 }}>
+            {/* WATER INTAKE */}
+            <Card style={styles.card}>
                 <Card.Title
                     title="Water Intake"
-                    left={LeftContent}
+                    subtitle={`${waterAmount} of 8 cups`}
+                    left={() => <Icon source="water" size={25} />}
                 />
 
                 <Card.Content>
-                    <FlatList
-                        horizontal
-                        contentContainerStyle={{
-                            justifyContent: 'space-evenly',
-                            flexGrow: 1
-                        }}
-                        data={waterCups}
-                        renderItem={renderWaterIntakeItem}
-
-                    />
+                    <View style={styles.waterRow}>
+                        {Array.from({ length: 8 }, (_, index) => renderWaterIntakeItem(index))}
+                    </View>
                 </Card.Content>
             </Card>
 
-            <View style={{ flexDirection: 'row', flex: 1, justifyContent: 'space-between' }}>
+            {/* MOOD AND EXERCISE */}
+            <View style={styles.twoColumnRow}>
 
+                {/* MOOD */}
+                <Card style={styles.halfCard}>
+                    <Card.Title title="Mood" />
 
-                <Card style={{
-                    marginBottom: 13,
-                    flex: 1,
-                    marginRight: 9
-                }}>
-                    <View style={{
-                        flexDirection: 'row',
-                        justifyContent: 'space-between',
-                        alignItems: 'center'
-                    }}>
-                        <Card.Title
-                            title="Mood"
-                            left={LeftContent}
-                        />
-                    </View>
+                    <Card.Content style={{ paddingHorizontal: 5 }}>
+                        <Text style={styles.cardDescription}>How are you feeling?</Text>
 
-                    <Text style={{
-                        fontSize: 14,
-                        color: '#64748B',
-                        marginLeft: 16,
-                        marginTop: 4
-                    }}>
-                        How are you feeling?
-                    </Text>
-
-                    <Card.Content style={{
-                        marginTop: 15,
-                        paddingHorizontal: 5
-                    }}>
-                        <FlatList
-                            horizontal
-                            data={mood}
-                            renderItem={renderMoodItem}
-                            keyExtractor={(_, index) => index.toString()}
-                            contentContainerStyle={{
-                                flexGrow: 1,
-                                justifyContent: 'space-evenly'
-                            }}
-                            showsHorizontalScrollIndicator={false}
-                        />
+                        <View style={styles.moodRow}>
+                            {MOODS.map(renderMoodItem)}
+                        </View>
                     </Card.Content>
                 </Card>
 
-                <Card style={{ marginBottom: 13, flex: 1 }}>
-                    <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
-                        <Card.Title
-                            title="Exercise"
-                            left={LeftContent}
-                        />
-
-                        <Text style={{ marginRight: 20 }} >
-                            {exercise} of 45 min
-                        </Text>
-
-                    </View>
+                {/* EXERCISE */}
+                <Card style={styles.halfCard}>
+                    <Card.Title title="Exercise" />
 
                     <Card.Content>
-                        <View style={{
-                            flexDirection: 'row',
-                            alignItems: 'center',
-                            gap: 10
-                        }}>
-                            <Icon
-                                source="run"
-                                color="limegreen"
-                                size={35}
-                            />
+                        <Text style={styles.goalText}>{exercise || 0} of 45 min</Text>
+
+                        <View style={styles.habitInputRow}>
+                            <Icon source="run" color="limegreen" size={30} />
 
                             <TextInput
                                 value={exercise}
                                 onChangeText={setExercise}
                                 keyboardType="numeric"
-                                style={{
-                                    fontSize: 20,
-                                    fontWeight: 'bold',
-                                    width: 60,
-                                    padding: 0
-                                }}
+                                style={styles.habitInput}
+                                placeholder="0"
                             />
 
-                            <Text style={{
-                                fontSize: 16
-                            }}>
-                                min
-                            </Text>
+                            <Text>min</Text>
                         </View>
 
-                        <View style={{
-                            height: 6,
-                            backgroundColor: 'lightgray',
-                            borderRadius: 5,
-                            marginTop: 10,
-                            marginBottom: 5
-                        }}>
-                            <View style={{
-                                height: 6,
-                                width: `${Math.min((Number(exercise) / 45) * 100, 100)}%`,
-                                backgroundColor: 'limegreen',
-                                borderRadius: 5
-                            }} />
+                        <View style={styles.progressTrack}>
+                            <View style={[
+                                styles.progressFill,
+                                {
+                                    width: `${Math.min(Math.max(Number(exercise) || 0, 0) / 45 * 100, 100)}%`,
+                                    backgroundColor: 'limegreen'
+                                }
+                            ]} />
                         </View>
                     </Card.Content>
                 </Card>
-
             </View>
 
-            <Card style={{ marginBottom: 13 }}>
-                <View style={{
-                    flexDirection: 'row',
-                    alignItems: 'center',
-                    justifyContent: 'space-between'
-                }}>
-                    <Card.Title
-                        title="Sleep"
-                        left={LeftContent}
-                    />
-
-                    <Text style={{ marginRight: 20 }}>
-                        {sleep} of 8 hours
-                    </Text>
-                </View>
+            {/* SLEEP */}
+            <Card style={styles.card}>
+                <Card.Title
+                    title="Sleep"
+                    right={() => (
+                        <Text style={{ marginRight: 15 }}>
+                            {sleep || 0} of 8 hours
+                        </Text>
+                    )}
+                />
 
                 <Card.Content>
-
-                    <View style={{
-                        flexDirection: 'row',
-                        alignItems: 'center',
-                        gap: 10
-                    }}>
-                        <Icon
-                            source="sleep"
-                            color="purple"
-                            size={35}
-                        />
+                    <View style={styles.habitInputRow}>
+                        <Icon source="sleep" color="purple" size={35} />
 
                         <TextInput
                             value={sleep}
                             onChangeText={setSleep}
                             keyboardType="numeric"
-                            style={{
-                                fontSize: 20,
-                                fontWeight: 'bold',
-                                width: 60,
-                                padding: 0
-                            }}
+                            style={styles.habitInput}
+                            placeholder="0"
                         />
 
-                        <Text style={{
-                            fontSize: 16
-                        }}>
-                            hours
-                        </Text>
+                        <Text>hours</Text>
                     </View>
 
-                    <View style={{
-                        height: 6,
-                        backgroundColor: 'lightgray',
-                        borderRadius: 5,
-                        marginTop: 10,
-                        marginBottom: 5,
-                    }}>
-                        <View style={{
-                            height: 6,
-                            width: `${Math.min((Number(sleep) / 8) * 100, 100)}%`,
-                            backgroundColor: 'purple',
-                            borderRadius: 5
-                        }} />
+                    <View style={styles.progressTrack}>
+                        <View style={[
+                            styles.progressFill,
+                            {
+                                width: `${Math.min(Math.max(Number(sleep) || 0, 0) / 8 * 100, 100)}%`,
+                                backgroundColor: 'purple'
+                            }
+                        ]} />
                     </View>
-
                 </Card.Content>
             </Card>
 
-<Card style={{ marginBottom: 13 }}>
-    <Card.Title
-        title="Food & Diet"
-        subtitle="Keep track of your meals and snacks"
-        left={(props) => (
-            <Icon
-                source="food-apple"
-                size={28}
-                color="green"
-            />
-        )}
-    />
+            {/* NOTES */}
+            <Card style={styles.card}>
+                <Card.Content>
+                    <Text style={styles.notesTitle}>Notes</Text>
 
-    <Card.Content>
+                    <TextInput
+                        placeholder="Tap here to add symptoms or notes..."
+                        value={notes}
+                        onChangeText={setNotes}
+                        multiline
+                        numberOfLines={5}
+                        textAlignVertical="top"
+                        style={styles.notesInput}
+                    />
+                </Card.Content>
+            </Card>
 
-        <TextInput
-            placeholder="What meal is this? (breakfast, lunch, dinner or snack)"
-            value={foodMeal}
-            onChangeText={setFoodMeal}
-            style={{
-                backgroundColor: 'white',
-                borderRadius: 10,
-                paddingHorizontal: 12,
-                marginBottom: 10
-            }}
-        />
-        
-        <TextInput
-            placeholder="What did you eat?"
-            value={foodName}
-            onChangeText={setFoodName}
-            style={{
-                backgroundColor: 'white',
-                borderRadius: 10,
-                paddingHorizontal: 12,
-                marginBottom: 10
-            }}
-        />
-
-        <TextInput
-            placeholder="Calories (kcal)"
-            value={foodCalories}
-            onChangeText={setFoodCalories}
-            keyboardType="numeric"
-            style={{
-                backgroundColor: 'white',
-                borderRadius: 10,
-                paddingHorizontal: 12,
-                marginBottom: 12
-            }}
-        />
-
-        <Button
-            mode="contained"
-            buttonColor="green"
-            icon="plus"
-            onPress={addFoodEntry}
-        >
-            Add Meal or Snack
-        </Button>
-
-        {foodEntries.length > 0 && (
-            <View style={{ marginTop: 18 }}>
-                <Divider style={{ marginBottom: 12 }} />
-
-                <Text style={{
-                    fontSize: 16,
-                    fontWeight: '600',
-                    marginBottom: 10
-                }}>
-                    Today's Food Log
-                </Text>
-
-                {foodEntries.map((item) => (
-                    <View
-                        key={item.id}
-                        style={{
-                            flexDirection: 'row',
-                            justifyContent: 'space-between',
-                            alignItems: 'center',
-                            paddingVertical: 10,
-                            borderBottomWidth: 1,
-                            borderBottomColor: '#EEEEEE'
-                        }}
-                    >
-                        <Text style={{ flex: 1, marginRight: 10 }}>
-                            {item.name}
-                        </Text>
-
-                        <Text style={{
-                            color: '#64748B',
-                            fontWeight: '500'
-                        }}>
-                            {item.calories} kcal
-                        </Text>
-                    </View>
-                ))}
-
-                <View style={{
-                    flexDirection: 'row',
-                    justifyContent: 'space-between',
-                    marginTop: 14
-                }}>
-                    <Text style={{ fontWeight: '600' }}>
-                        Total recorded
-                    </Text>
-
-                    <Text style={{
-                        fontWeight: 'bold',
-                        color: 'green'
-                    }}>
-                        {foodEntries.reduce(
-                            (total, item) => total + item.calories,
-                            0
-                        )} kcal
-                    </Text>
-                </View>
-            </View>
-        )}
-    </Card.Content>
-</Card>
-
-
-<Card style={{ marginBottom: 13 }}>
-    <Card.Content>
-        <Text style={{
-            fontSize: 18,
-            fontWeight: 'bold',
-            marginBottom: 10
-        }}>
-            Notes
-        </Text>
-
-        <TextInput
-            placeholder="Tap here to add symptoms or notes..."
-            value={notes}
-            onChangeText={setNotes}
-            multiline={true}
-            numberOfLines={5}
-            textAlignVertical="top"
-            style={{
-                backgroundColor: 'white',
-                borderRadius: 10,
-                padding: 12,
-                minHeight: 120,
-                fontSize: 16
-            }}
-        />
-    </Card.Content>
-</Card>
-
-
-            <Button mode="contained" buttonColor='purple' onPress={save} > Save </Button>
+            {/* SAVE */}
+            <Button
+                mode="contained"
+                buttonColor="#6558F5"
+                onPress={save}
+                loading={saving}
+                disabled={saving}
+                style={styles.saveButton}
+            >
+                Save
+            </Button>
 
         </ScrollView>
-    )
-}
+    );
+};
+
+// -----------------------------------
+// Styles
+// -----------------------------------
 
 const styles = StyleSheet.create({
-    notesHeader: {
-        flexDirection: 'row',
-        justifyContent: 'space-between',
-        alignItems: 'center',
-    },
-    notesTitle: {
-        fontWeight: '700',
-        color: 'black',
-    },
-    notesInput: {
-        backgroundColor: 'white',
-        borderRadius: 12,
-        minHeight: 60,
-    },
+
+    container: { flex: 1, backgroundColor: '#F8F9FD' },
+    content: { padding: 15, paddingBottom: 35 },
+
+    card: { marginBottom: 13, backgroundColor: '#FFFFFF', borderRadius: 13 },
+    halfCard: { flex: 1, backgroundColor: '#FFFFFF', borderRadius: 13, elevation: 0, shadowOpacity: 0, shadowOffset: { width: 0, height: 0 }, shadowRadius: 0 },
+
+    vitalRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingVertical: 6 },
+    vitalLabel: { flexDirection: 'row', alignItems: 'center', gap: 10, flex: 1 },
+    vitalName: { fontSize: 13, fontWeight: '500' },
+    vitalInputGroup: { flexDirection: 'row', alignItems: 'center', gap: 6 },
+    vitalInput: { width: 80, textAlign: 'right', fontSize: 15, paddingVertical: 4, borderBottomWidth: 1, borderColor: '#E5E5E5' },
+    vitalUnit: { width: 45, fontSize: 10, color: '#777' },
+    divider: { marginLeft: 30, opacity: 0.2 },
+
+    waterRow: { flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'space-evenly', gap: 5 },
+    waterCup: { padding: 2 },
+
+    twoColumnRow: { flexDirection: 'row', gap: 9, marginBottom: 13 },
+    cardDescription: { fontSize: 11, color: '#64748B', marginBottom: 12, textAlign: 'center' },
+
+    moodRow: { flexDirection: 'row', justifyContent: 'space-around', flexWrap: 'wrap' },
+    moodItem: { width: '20%', alignItems: 'center', marginBottom: 5 },
+    moodCircle: { width: 34, height: 34, borderRadius: 17, alignItems: 'center', justifyContent: 'center' },
+    moodSelected: { borderWidth: 2, borderColor: '#6558F5' },
+    moodLabel: { fontSize: 8, color: '#777', textAlign: 'center', marginTop: 4 },
+    moodLabelSelected: { color: '#6558F5', fontWeight: '700' },
+
+    goalText: { fontSize: 11, color: '#64748B', marginBottom: 10 },
+    habitInputRow: { flexDirection: 'row', alignItems: 'center', gap: 10 },
+    habitInput: { fontSize: 18, fontWeight: '700', width: 50, padding: 0 },
+    progressTrack: { height: 7, backgroundColor: '#E5E7EB', borderRadius: 5, marginTop: 12, overflow: 'hidden' },
+    progressFill: { height: '100%', borderRadius: 5 },
+
+    notesTitle: { fontSize: 18, fontWeight: '700', marginBottom: 10 },
+    notesInput: { backgroundColor: '#FFFFFF', borderRadius: 10, padding: 12, minHeight: 120, fontSize: 15, borderWidth: 1, borderColor: '#EEEEF4' },
+
+    saveButton: { marginTop: 5, marginBottom: 15, borderRadius: 9 }
+
 });
 
-export default DailyHealthTrackScreen
+export default DailyHealthTrackScreen;
