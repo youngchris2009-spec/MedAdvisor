@@ -29,6 +29,10 @@ const DailyHealthTrackScreen = () => {
     const [notes, setNotes] = useState('');
     const [saving, setSaving] = useState(false);
 
+    const [foodName, setFoodName] = useState('');
+    const [foodCalories, setFoodCalories] = useState('');
+    const [foodEntries, setFoodEntries] = useState([]);
+
     const vitals = [
         { name: 'Weight', value: weight, unit: 'lbs', icon: 'scale-bathroom', color: 'navy', setValue: setWeight },
         { name: 'Blood Pressure', value: bloodPressure, unit: 'mmHg', icon: 'gauge', color: 'orange', setValue: setBloodPressure },
@@ -390,6 +394,118 @@ const DailyHealthTrackScreen = () => {
                             }
                         ]} />
                     </View>
+                    
+
+                </Card.Content>
+            </Card>
+  
+
+            {/* DIET */}
+            <Card style={styles.card}>
+                <Card.Title
+                    title="Diet"
+                    left={() => (
+                        <Icon source="food-apple" color="orange" size={30} />
+                    )}
+                />
+
+                <Card.Content>
+                    <Text style={styles.goalText}>
+                        {foodCalories || 0} calories
+                    </Text>
+
+                    <View style={styles.habitInputRow}>
+                        <Icon source="silverware-fork-knife" color="orange" size={30} />
+
+                        <TextInput
+                            value={foodName}
+                            onChangeText={setFoodName}
+                            style={[styles.habitInput, { flex: 1, }]}
+                            placeholder="What did you eat?"
+                        />
+                    </View>
+
+                    <View style={[styles.habitInputRow, { marginTop: 12 }]}>
+
+                        <TextInput
+                            value={foodCalories}
+                            onChangeText={setFoodCalories}
+                            keyboardType="numeric"
+                            style={styles.habitInput}
+                            placeholder="0"
+                        />
+
+                        <Text>calories</Text>
+                    </View>
+
+                    <Button
+                        mode="outlined"
+                        onPress={() => {
+                            if (
+                                !foodName.trim() ||
+                                foodCalories.trim() === '' ||
+                                !Number.isFinite(Number(foodCalories)) ||
+                                Number(foodCalories) < 0
+                            ) {
+                                Alert.alert(
+                                    'Invalid Entry',
+                                    'Enter a food name and a valid calorie amount.'
+                                );
+                                return;
+                            }
+
+                            setFoodEntries(prev => [
+                                ...prev,
+                                {
+                                    id: `${Date.now()}-${Math.random()}`,
+                                    name: foodName.trim(),
+                                    calories: Number(foodCalories),
+                                    meal: 'Snack',
+                                },
+                            ]);
+
+                            setFoodName('');
+                            setFoodCalories('');
+                        }}
+                        style={{ marginTop: 12 }}
+                    >
+                        Add Meal or Snack
+                    </Button>
+
+                    {foodEntries.map(item => (
+                        <View
+                            key={item.id}
+                            style={{
+                                flexDirection: 'row',
+                                justifyContent: 'space-between',
+                                alignItems: 'center',
+                                marginTop: 10,
+                            }}
+                        >
+                            <Text style={{ flex: 1 }}>
+                                {item.name} — {item.calories} cal
+                            </Text>
+
+                            <Pressable
+                                onPress={() =>
+                                    setFoodEntries(prev =>
+                                        prev.filter(food => food.id !== item.id)
+                                    )
+                                }
+                            >
+                                <Icon source="delete-outline" color="red" size={22} />
+                            </Pressable>
+                        </View>
+                    ))}
+
+                    <Divider style={{ marginTop: 12, marginBottom: 10 }} />
+
+                    <Text style={{ fontWeight: '700', fontSize: 16 }}>
+                        Total: {foodEntries.reduce(
+                            (total, item) => total + (Number(item.calories) || 0),
+                            0
+                        )} calories
+                    </Text>
                 </Card.Content>
             </Card>
 
@@ -421,10 +537,10 @@ const DailyHealthTrackScreen = () => {
             >
                 Save
             </Button>
-
         </ScrollView>
     );
 };
+
 
 // -----------------------------------
 // Styles
