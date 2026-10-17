@@ -1,8 +1,11 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { View, ScrollView, StyleSheet, TouchableOpacity, ActivityIndicator } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { Text, Card, ProgressBar, IconButton, Button, Divider } from 'react-native-paper';
 import { doc, getDoc, collection, query, where, getDocs, updateDoc, arrayUnion } from 'firebase/firestore';
 import { db } from '../firebase';
+import { useFocusEffect } from '@react-navigation/native';
+import { useCallback } from 'react';
 
 const USER_ID = 'YIuwbxGpb1OMWnNzOGiJgJsA1Fr1';
 
@@ -104,10 +107,12 @@ const MainScreen = ({navigation}) => {
     }
   };
 
-  useEffect(() => {
-    getUserData();
-    getMedications();
-  }, []);
+useFocusEffect(
+    useCallback(() => {
+        getUserData();
+        getMedications();
+    }, [])
+);
 
   const scheduledDoses = useMemo(() => {
     const doses = [];
@@ -243,48 +248,54 @@ const overview = [
 
 const OverviewCard = ({ item }) => (
   <View style={[styles.overviewCard, { backgroundColor: item.background }]}>
-    <View style={[styles.smallIcon, { backgroundColor: `${item.iconColor}22` }]}>
-      <IconButton icon={item.icon} iconColor={item.iconColor} size={17} style={styles.iconButton} />
+
+    {/* Icon and Add Button */}
+    <View style={styles.overviewTopRow}>
+      <View style={[styles.smallIcon, { backgroundColor: `${item.iconColor}22` }]}>
+        <IconButton
+          icon={item.icon}
+          iconColor={item.iconColor}
+          size={17}
+          style={styles.iconButton}
+        />
+      </View>
+
+      {item.viewAll && (
+        <TouchableOpacity
+          onPress={() => navigation.navigate('Add Medication')}
+        >
+          <Text style={styles.overviewAdd}>+ Add</Text>
+        </TouchableOpacity>
+      )}
     </View>
 
-    {item.viewAll && (
-  <View style={styles.overviewViewAll}>
-
-    <TouchableOpacity
-      onPress={() => navigation.navigate('Prescript Scan')}
-    >
-      <Text style={styles.overviewAdd}>+ Add</Text>
-    </TouchableOpacity>
-
-    <TouchableOpacity
-      onPress={() => navigation.navigate('Medication List')}
-    >
-      <Text style={styles.overviewViewAll}>View All</Text>
-    </TouchableOpacity>
-
-  </View>
-)}
-
-  {item.trends && (
-    <View style={styles.overviewViewAll}>
-  <TouchableOpacity
-  onPress={() => navigation.navigate("Health Trends")}
-  >
-    <Text style={styles.overviewViewAll}>View Trends</Text>
-  </TouchableOpacity>
-  </View>
-  )}
-
-
+    {/* Title and Value */}
     <Text style={styles.overviewTitle}>{item.title}</Text>
-    <Text style={[styles.overviewValue, { color: item.iconColor }]}>{item.value}</Text>
+    <Text style={[styles.overviewValue, { color: item.iconColor }]}>
+      {item.value}
+    </Text>
 
+    {/* Subtitle and View All */}
     <View style={styles.overviewBottomRow}>
       <Text style={styles.overviewSubtitle}>{item.subtitle}</Text>
-      
-      
-      
+
+      {item.viewAll && (
+        <TouchableOpacity
+          onPress={() => navigation.navigate('Medication List')}
+        >
+          <Text style={styles.overviewViewAll}>View All</Text>
+        </TouchableOpacity>
+      )}
+
+      {item.trends && (
+        <TouchableOpacity
+          onPress={() => navigation.navigate('Health Trends')}
+        >
+          <Text style={styles.overviewViewAll}>View Trends</Text>
+        </TouchableOpacity>
+      )}
     </View>
+
   </View>
 );
 
@@ -307,7 +318,8 @@ const OverviewCard = ({ item }) => (
   }
 
   return (
-    <ScrollView style={styles.container} contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
+    <SafeAreaView style={styles.container} edges={['top', 'bottom']}>
+      <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
 
       {/* HEADER */}
       <View style={styles.header}>
@@ -545,7 +557,8 @@ const OverviewCard = ({ item }) => (
         <Text style={styles.bottomMessageText}>🎯 Small daily actions lead to big long-term results!</Text>
       </View>
 
-    </ScrollView>
+      </ScrollView>
+    </SafeAreaView>
   );
 };
 
@@ -643,6 +656,19 @@ const styles = StyleSheet.create({
   overviewBottomRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginTop: 2 },
   overviewViewAll: { fontSize: 10, fontWeight: '700', color: '#5B50E9' },
   overviewTouchable: { width: '48.5%' },
+
+  overviewTopRow: {
+  flexDirection: 'row',
+  justifyContent: 'space-between',
+  alignItems: 'center',
+  marginBottom: 5,
+},
+
+overviewAdd: {
+  fontSize: 11,
+  fontWeight: '700',
+  color: '#5B50E9',
+},
 
   bottomMessage: { marginTop: 15, backgroundColor: '#F3F0FF', borderRadius: 20, paddingVertical: 10, paddingHorizontal: 15, alignItems: 'center' },
   bottomMessageText: { color: '#5A50D6', fontSize: 11, fontWeight: '600', textAlign: 'center' },
