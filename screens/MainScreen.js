@@ -4,7 +4,7 @@ import { Text, Card, ProgressBar, IconButton, Button, Divider } from 'react-nati
 import { doc, getDoc, collection, query, where, getDocs, updateDoc, arrayUnion } from 'firebase/firestore';
 import { db } from '../firebase';
 
-const USER_ID = 'YIuwbxGpb1OMWnNzOGiJgJsA1Fr1';
+const USER_ID = 'auth.currentUser.uid;';
 
 const MainScreen = ({navigation}) => {
   const [userData, setUserData] = useState(null);
