@@ -87,8 +87,7 @@ const logMedication = async (medication) => {
 
       setLoading(true);
 
-      // Replace this with Firebase Auth UID later
-      const userID = '12345';
+      const userID = 'auth.currentUser.uid;';
 
       const medicationQuery = query(
         collection(db, 'medication'),
