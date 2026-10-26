@@ -74,7 +74,6 @@ const PrescriptionScanScreen = ({navigation}) => {
     setPhoto(null)
   }
 
-  // For now just test the captured image
 const usePhoto = async () => {
   try {
     console.log(
