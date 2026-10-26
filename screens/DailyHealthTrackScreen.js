@@ -55,8 +55,7 @@ const DailyHealthTrackScreen = () => {
 
             const startOfTomorrow = new Date(startOfToday);
             startOfTomorrow.setDate(startOfTomorrow.getDate() + 1);
-
-            // dateTime is stored as an ISO string.
+            
             const q = query(
                 collection(db, 'dailyHealthTracking'),
                 where('userID', '==', USER_ID),
@@ -91,7 +90,9 @@ const DailyHealthTrackScreen = () => {
 
             setNotes(String(latest['Notes']?.vitals ?? ''));
 
-            // Load habit data saved in healthHabitRecommendation.
+
+
+            
             const habitsQuery = query(
                 collection(db, 'healthHabitRecommendation'),
                 where('userID', '==', USER_ID)
