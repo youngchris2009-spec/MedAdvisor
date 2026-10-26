@@ -5,7 +5,7 @@ import { Text, Button, Card, Divider, Icon } from 'react-native-paper';
 import { doc, setDoc, collection, query, where, getDocs, orderBy } from 'firebase/firestore';
 import { db } from '../firebase';
 
-const USER_ID = '12345';
+const USER_ID = auth.currentUser.uid;
 
 const MOODS = [
     { icon: 'emoticon-frown', color: 'red', label: 'Very Bad' },
