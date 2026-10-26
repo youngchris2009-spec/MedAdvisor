@@ -91,7 +91,7 @@ const [time, setTime] = useState(
 
         setSaving(true);
 
-        const userID = 'YIuwbxGpb1OMWnNzOGiJgJsA1Fr1';
+        const userID = 'auth.currentUser.uid;';
 
         await addDoc(
             collection(db, 'medication'),
